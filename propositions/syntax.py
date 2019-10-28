@@ -6,9 +6,10 @@
 """Syntactic handling of propositional formulae."""
 
 from __future__ import annotations
-from typing import Mapping, Optional, Set, Tuple, Union
+from typing import Mapping, Optional, Set, Tuple, Union, Pattern, AnyStr
 
 from logic_utils import frozen
+import re
 
 
 def is_variable(s: str) -> bool:
@@ -133,8 +134,28 @@ class Formula:
         Returns:
             The standard string representation of the current formula.
         """
+        if is_variable(self.root) or is_constant(self.root):
+            return self.root
+        elif is_unary(self.root):
+            return self.root + repr(self.first)
+        else:  # binary
+            return f'({repr(self.first)}{self.root}{repr(self.second)})'
 
-        return Formula._build_string_repr("", self)
+    @staticmethod
+    def _get_signs(f: Formula, get_vars: bool) -> Set[str]:
+        temp = set()
+        if is_constant(f.root):
+            return temp if get_vars else set(f.root)
+        elif is_variable(f.root):
+            temp.add(f.root) if get_vars else None
+            return temp
+        elif is_unary(f.root):
+            return Formula._get_signs(f.first, get_vars) if get_vars else {f.root}.union(
+                Formula._get_signs(f.first, get_vars))
+        else:  # binary
+            return Formula._get_signs(f.first, get_vars). \
+                union(Formula._get_signs(f.second, get_vars)) if get_vars else {f.root}.union(
+                Formula._get_signs(f.first, get_vars)).union(Formula._get_signs(f.second, get_vars))
 
     def variables(self) -> Set[str]:
         """Finds all atomic propositions (variables) in the current formula.
@@ -142,7 +163,7 @@ class Formula:
         Returns:
             A set of all atomic propositions used in the current formula.
         """
-        # Task 1.2
+        return self._get_signs(self, True)
 
     def operators(self) -> Set[str]:
         """Finds all operators in the current formula.
@@ -151,7 +172,7 @@ class Formula:
             A set of all operators (including ``'T'`` and ``'F'``) used in the
             current formula.
         """
-        # Task 1.3
+        return self._get_signs(self, False)
 
     @staticmethod
     def parse_prefix(s: str) -> Tuple[Union[Formula, None], str]:
@@ -169,7 +190,43 @@ class Formula:
             then returned pair should be of ``None`` and an error message, where
             the error message is a string with some human-readable content.
         """
-        # Task 1.4
+        error = None, 'Error, formula string is invalid'
+        if Formula._invalid_prefix_string(s):
+            return error
+        elif is_constant(s[0]):
+            return Formula(s[0]), s[1:]
+        elif is_variable(s[0]):
+            cg = re.findall(r'^[p-z][0-9]*', s)
+            if Formula._invalid_capture_group_size(cg):
+                return error
+            return Formula(cg[0]), s[len(cg[0]):]
+        elif is_unary(s[0]) and not Formula._invalid_prefix_string(s[1:]):
+            f, postfix = Formula.parse_prefix(s[1:])
+            return Formula(s[0], f), postfix
+        elif s[0] == '(' and len(s) > 1 and s[1] != '(':  # binary
+            re_var_or_const = r'(~?(?:[p-z][0-9]*)|[FT])'
+            re_quantifier = r'([&|]|->)'
+            full_re = r"\(" + re_var_or_const + re_quantifier + re_var_or_const + r'\)'
+            cg = re.findall(full_re, s)
+            # statement = re.findall(r"\((~?(?:[p-z][0-9]*)|[FT])([&|]|->)(~?[p-z][0-9]*)\)", s)[0]
+            if Formula._invalid_capture_group_size(cg):
+                return error
+
+            statement = f'({"".join(str(c) for c in cg[0])})'
+            quantifier = re.findall(re_quantifier, statement)[0]
+            tokens = re.findall(re_var_or_const, statement)
+            return Formula(quantifier, Formula.parse_prefix(tokens[0])[0], Formula.parse_prefix(tokens[1])[0]), s[len(
+                statement):]
+        else:
+            return error
+
+    @staticmethod
+    def _invalid_prefix_string(s: str):
+        return len(s) == 0
+
+    @staticmethod
+    def _invalid_capture_group_size(capture_group: list):
+        return len(capture_group) == 0
 
     @staticmethod
     def is_formula(s: str) -> bool:
@@ -267,29 +324,3 @@ class Formula:
                    is_constant(operator)
             assert substitution_map[operator].variables().issubset({'p', 'q'})
         # Task 3.4
-
-    @staticmethod
-    def _build_string_repr(str_repr: str, formula: Optional[Formula]) -> str:
-        if is_constant(formula.root) or is_variable(formula.root):
-            return str_repr + formula.root
-
-        if is_unary(formula.root):
-            return Formula._build_string_repr(str_repr + formula.root, formula.first)
-        else:  # binary
-            first = Formula._build_string_repr(str_repr + "(", formula.first)
-
-            return Formula._build_string_repr(
-                first + formula.root, formula.second) + ")"
-
-
-if __name__ == '__main__':
-    f = Formula('~', Formula('&', Formula('p'), Formula('q76')))
-    g = Formula('&', Formula('p'), Formula('q76'))
-    h = Formula('~', Formula('&', Formula('p'), Formula('~', Formula('q76'))))  # TODO check if that's a valid formula
-    i = Formula('&', Formula('p'), Formula('~', Formula('q76')))  # TODO check if that's a valid formula
-
-    # (&~q76)
-    print(i)
-    print(f)
-    print(g)
-    print(h)
