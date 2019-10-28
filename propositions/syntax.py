@@ -10,6 +10,7 @@ from typing import Mapping, Optional, Set, Tuple, Union
 
 from logic_utils import frozen
 
+
 def is_variable(s: str) -> bool:
     """Checks if the given string is an atomic proposition.
 
@@ -22,6 +23,7 @@ def is_variable(s: str) -> bool:
     """
     return s[0] >= 'p' and s[0] <= 'z' and (len(s) == 1 or s[1:].isdigit())
 
+
 def is_constant(s: str) -> bool:
     """Checks if the given string is a constant.
 
@@ -33,6 +35,7 @@ def is_constant(s: str) -> bool:
     """
     return s == 'T' or s == 'F'
 
+
 def is_unary(s: str) -> bool:
     """Checks if the given string is a unary operator.
 
@@ -43,6 +46,7 @@ def is_unary(s: str) -> bool:
         ``True`` if the given string is a unary operator, ``False`` otherwise.
     """
     return s == '~'
+
 
 def is_binary(s: str) -> bool:
     """Checks if the given string is a binary operator.
@@ -56,6 +60,7 @@ def is_binary(s: str) -> bool:
     return s == '&' or s == '|' or s == '->'
     # For Chapter 3:
     # return s in {'&', '|',  '->', '+', '<->', '-&', '-|'}
+
 
 @frozen
 class Formula:
@@ -128,7 +133,8 @@ class Formula:
         Returns:
             The standard string representation of the current formula.
         """
-        # Task 1.1
+
+        return Formula._build_string_repr("", self)
 
     def variables(self) -> Set[str]:
         """Finds all atomic propositions (variables) in the current formula.
@@ -146,7 +152,7 @@ class Formula:
             current formula.
         """
         # Task 1.3
-        
+
     @staticmethod
     def parse_prefix(s: str) -> Tuple[Union[Formula, None], str]:
         """Parses a prefix of the given string into a formula.
@@ -177,7 +183,7 @@ class Formula:
             representation of a formula, ``False`` otherwise.
         """
         # Task 1.5
-        
+
     @staticmethod
     def parse(s: str) -> Formula:
         """Parses the given valid string representation into a formula.
@@ -191,7 +197,7 @@ class Formula:
         assert Formula.is_formula(s)
         # Task 1.6
 
-# Optional tasks for Chapter 1
+    # Optional tasks for Chapter 1
 
     def polish(self) -> str:
         """Computes the polish notation representation of the current formula.
@@ -213,7 +219,7 @@ class Formula:
         """
         # Optional Task 1.8
 
-# Tasks for Chapter 3
+    # Tasks for Chapter 3
 
     def substitute_variables(
             self, substitution_map: Mapping[str, Formula]) -> Formula:
@@ -261,3 +267,29 @@ class Formula:
                    is_constant(operator)
             assert substitution_map[operator].variables().issubset({'p', 'q'})
         # Task 3.4
+
+    @staticmethod
+    def _build_string_repr(str_repr: str, formula: Optional[Formula]) -> str:
+        if is_constant(formula.root) or is_variable(formula.root):
+            return str_repr + formula.root
+
+        if is_unary(formula.root):
+            return Formula._build_string_repr(str_repr + formula.root, formula.first)
+        else:  # binary
+            first = Formula._build_string_repr(str_repr + "(", formula.first)
+
+            return Formula._build_string_repr(
+                first + formula.root, formula.second) + ")"
+
+
+if __name__ == '__main__':
+    f = Formula('~', Formula('&', Formula('p'), Formula('q76')))
+    g = Formula('&', Formula('p'), Formula('q76'))
+    h = Formula('~', Formula('&', Formula('p'), Formula('~', Formula('q76'))))  # TODO check if that's a valid formula
+    i = Formula('&', Formula('p'), Formula('~', Formula('q76')))  # TODO check if that's a valid formula
+
+    # (&~q76)
+    print(i)
+    print(f)
+    print(g)
+    print(h)

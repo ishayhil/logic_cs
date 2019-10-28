@@ -9,6 +9,7 @@ from __future__ import annotations
 
 from logic_utils import *
 
+
 def half(x: int) -> int:
     """Halves the given even integer.
 
@@ -18,5 +19,6 @@ def half(x: int) -> int:
     Returns:
         A number `z` so that ``z+z=x``.
     """
-    assert x%2 == 0
+    assert x % 2 == 0
+    return int(x / 2)
     # Task 0.1
