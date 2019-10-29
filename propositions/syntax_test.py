@@ -109,6 +109,7 @@ def test_parse_prefix(debug=False):
         assert type(ff) is Formula
         assert type(rr) is str
         ff = str(ff)
+
         assert ff == f, "parse_prefix parsed " + str(ff) + " should be " + str(f)
         assert rr == r, "parse-Prefix did not parse " + rr
 

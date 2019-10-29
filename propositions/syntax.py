@@ -97,8 +97,12 @@ class Formula:
             assert type(first) is Formula and second is None
             self.root, self.first = root, first
         else:
-            assert is_binary(root) and type(first) is Formula and \
-                   type(second) is Formula
+            try:
+                assert is_binary(root) and type(first) is Formula and \
+                       type(second) is Formula
+            except:
+                print(root, first.root, second)
+                exit()
             self.root, self.first, self.second = root, first, second
 
     def __eq__(self, other: object) -> bool:
@@ -191,6 +195,7 @@ class Formula:
             the error message is a string with some human-readable content.
         """
         error = None, 'Error, formula string is invalid'
+
         if Formula._invalid_prefix_string(s):
             return error
         elif is_constant(s[0]):
@@ -203,20 +208,18 @@ class Formula:
         elif is_unary(s[0]) and not Formula._invalid_prefix_string(s[1:]):
             f, postfix = Formula.parse_prefix(s[1:])
             return Formula(s[0], f), postfix
-        elif s[0] == '(' and len(s) > 1 and s[1] != '(':  # binary
-            re_var_or_const = r'(~?(?:[p-z][0-9]*)|[FT])'
-            re_quantifier = r'([&|]|->)'
-            full_re = r"\(" + re_var_or_const + re_quantifier + re_var_or_const + r'\)'
-            cg = re.findall(full_re, s)
-            # statement = re.findall(r"\((~?(?:[p-z][0-9]*)|[FT])([&|]|->)(~?[p-z][0-9]*)\)", s)[0]
-            if Formula._invalid_capture_group_size(cg):
+        elif s[0] == '(':  # binary
+            exp = Formula._get_braces_content(s)
+            first, tail = Formula.parse_prefix(exp)
+            quantifier_cg = re.findall(r'[&|]|->', tail)
+            if Formula._invalid_capture_group_size(quantifier_cg):
                 return error
 
-            statement = f'({"".join(str(c) for c in cg[0])})'
-            quantifier = re.findall(re_quantifier, statement)[0]
-            tokens = re.findall(re_var_or_const, statement)
-            return Formula(quantifier, Formula.parse_prefix(tokens[0])[0], Formula.parse_prefix(tokens[1])[0]), s[len(
-                statement):]
+            quantifier = quantifier_cg[0]
+            second, tail = Formula.parse_prefix(
+                tail[tail.find(quantifier) + 1 if len(quantifier) == 1 else tail.find(quantifier) + 2:])
+
+            return Formula(quantifier, first, second), tail
         else:
             return error
 
@@ -227,6 +230,18 @@ class Formula:
     @staticmethod
     def _invalid_capture_group_size(capture_group: list):
         return len(capture_group) == 0
+
+    @staticmethod
+    def _get_braces_content(s: str) -> str:
+        cnt = 0
+        for ind, c in enumerate(s):
+            if c == '(':
+                cnt += 1
+            elif c == ')':
+                cnt -= 1
+            if cnt == 0:
+                return s[1: ind]
+        return ""
 
     @staticmethod
     def is_formula(s: str) -> bool:
