@@ -97,12 +97,8 @@ class Formula:
             assert type(first) is Formula and second is None
             self.root, self.first = root, first
         else:
-            try:
-                assert is_binary(root) and type(first) is Formula and \
-                       type(second) is Formula
-            except:
-                print(root, first.root, second)
-                exit()
+            assert is_binary(root) and type(first) is Formula and \
+                   type(second) is Formula
             self.root, self.first, self.second = root, first, second
 
     def __eq__(self, other: object) -> bool:
@@ -209,19 +205,17 @@ class Formula:
             f, postfix = Formula.parse_prefix(s[1:])
             return Formula(s[0], f), postfix
         elif s[0] == '(':  # binary
-            exp = Formula._get_braces_content(s)
-            first, tail = Formula.parse_prefix(exp)
-            quantifier_cg = re.findall(r'[&|]|->', tail)
+            first, postfix = Formula.parse_prefix(s[1:])
+            quantifier_cg = re.findall(r'[&|]|->', postfix)
             if Formula._invalid_capture_group_size(quantifier_cg):
                 return error
 
-            quantifier = quantifier_cg[0]
-            second, tail = Formula.parse_prefix(
-                tail[tail.find(quantifier) + 1 if len(quantifier) == 1 else tail.find(quantifier) + 2:])
+            quantifier_loc = postfix.find(quantifier_cg[0]) + len(quantifier_cg[0])
+            second, second_postfix = Formula.parse_prefix(postfix[quantifier_loc:])
+            if second_postfix and second_postfix[0] == ')':
+                return Formula(quantifier_cg[0], first, second), second_postfix[1:]
 
-            return Formula(quantifier, first, second), tail
-        else:
-            return error
+        return error
 
     @staticmethod
     def _invalid_prefix_string(s: str):
@@ -230,18 +224,6 @@ class Formula:
     @staticmethod
     def _invalid_capture_group_size(capture_group: list):
         return len(capture_group) == 0
-
-    @staticmethod
-    def _get_braces_content(s: str) -> str:
-        cnt = 0
-        for ind, c in enumerate(s):
-            if c == '(':
-                cnt += 1
-            elif c == ')':
-                cnt -= 1
-            if cnt == 0:
-                return s[1: ind]
-        return ""
 
     @staticmethod
     def is_formula(s: str) -> bool:
@@ -254,7 +236,8 @@ class Formula:
             ``True`` if the given string is a valid standard string
             representation of a formula, ``False`` otherwise.
         """
-        # Task 1.5
+        first, postfix = Formula.parse_prefix(s)
+        return first and not postfix
 
     @staticmethod
     def parse(s: str) -> Formula:
@@ -267,7 +250,7 @@ class Formula:
             A formula whose standard string representation is the given string.
         """
         assert Formula.is_formula(s)
-        # Task 1.6
+        return Formula.parse_prefix(s)[0]
 
     # Optional tasks for Chapter 1
 
