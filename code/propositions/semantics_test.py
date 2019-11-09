@@ -11,12 +11,13 @@ from propositions.syntax import *
 from propositions.semantics import *
 from propositions.axiomatic_systems import *
 
+
 def test_evaluate(debug=False):
     infix1 = '~(p&q7)'
     models_values1 = [
-        ({'p': True,  'q7': False}, True),
+        ({'p': True, 'q7': False}, True),
         ({'p': False, 'q7': False}, True),
-        ({'p': True,  'q7': True},  False)
+        ({'p': True, 'q7': True}, False)
     ]
     infix2 = '~~~x'
     models_values2 = [
@@ -25,57 +26,62 @@ def test_evaluate(debug=False):
     ]
     infix3 = '((x->y)&(~x->z))'
     models_values3 = [
-        ({'x': True,  'y': False, 'z':True},  False),
-        ({'x': False, 'y': False, 'z':True},  True),
-        ({'x': True,  'y': True,  'z':False}, True)
+        ({'x': True, 'y': False, 'z': True}, False),
+        ({'x': False, 'y': False, 'z': True}, True),
+        ({'x': True, 'y': True, 'z': False}, True)
     ]
     infix4 = '(T&p)'
     models_values4 = [
-        ({'p': True},  True),
+        ({'p': True}, True),
         ({'p': False}, False)
     ]
     infix5 = '(F|p)'
     models_values5 = [
-        ({'p': True},  True),
+        ({'p': True}, True),
         ({'p': False}, False)
     ]
-    for infix,models_values in [[infix1, models_values1],
-                                [infix2, models_values2],
-                                [infix3, models_values3],
-                                [infix4, models_values4],
-                                [infix5, models_values5]]:
+    for infix, models_values in [[infix1, models_values1],
+                                 [infix2, models_values2],
+                                 [infix3, models_values3],
+                                 [infix4, models_values4],
+                                 [infix5, models_values5]]:
         formula = Formula.parse(infix)
-        for model,value in models_values:
+        for model, value in models_values:
             if debug:
                 print('Testing evaluation of formula', formula, 'in model',
                       model)
             assert evaluate(formula, frozendict(model)) == value
 
+
 def test_all_models(debug=False):
     variables1 = ('p', 'q')
     models1 = [{'p': False, 'q': False}, \
-               {'p': False, 'q': True},  \
-               {'p': True,  'q': False}, \
-               {'p': True,  'q': True} ]
-    variables2  = ['x']
+               {'p': False, 'q': True}, \
+               {'p': True, 'q': False}, \
+               {'p': True, 'q': True}]
+    variables2 = ['x']
     models2 = [{'x': False}, {'x': True}]
-    for variables,models in [[variables1, models1], [variables2, models2]]:
+    for variables, models in [[variables1, models1], [variables2, models2]]:
         if debug:
             print('Testing all models over', variables)
+            print(list(all_models(variables)))
         assert list(all_models(variables)) == models
 
+
 def test_truth_values(debug=False):
-    for infix,variables,values in [
-            ['~(p&q7)', ('p', 'q7'), [True, True, True, False]],
-            ['(y|~x)',  ('y', 'x'),  [True, False, True, True]],
-            ['~~~p',    ('p'),       [True, False]]]:
+    for infix, variables, values in [
+        ['~(p&q7)', ('p', 'q7'), [True, True, True, False]],
+        ['(y|~x)', ('y', 'x'), [True, False, True, True]],
+        ['~~~p', ('p'), [True, False]]]:
         formula = Formula.parse(infix)
         if debug:
             print('Testing the evaluation of', formula,
                   'on all models over its variables')
+
         tvals = list(truth_values(formula, tuple(all_models(variables))))
         assert tvals == values, \
-               'Expected ' + str(values) + '; got ' + str(tvals)
+            'Expected ' + str(values) + '; got ' + str(tvals)
+
 
 def test_print_truth_table(debug=False):
     infix1 = '~r'
@@ -83,7 +89,7 @@ def test_print_truth_table(debug=False):
              '|---|----|\n' \
              '| F | T  |\n' \
              '| T | F  |\n'
-    
+
     infix2 = '~(p&q7)'
     table2 = '| p | q7 | ~(p&q7) |\n' \
              '|---|----|---------|\n' \
@@ -115,13 +121,14 @@ def test_print_truth_table(debug=False):
     __test_print_truth_table([infix1, infix2, infix3, infix4],
                              [table1, table2, table3, table4], debug)
 
-def __test_print_truth_table(infixes, tables, debug):
 
+def __test_print_truth_table(infixes, tables, debug):
     from io import StringIO
     import sys
 
     class PrintCapturer:
         """A helper class for capturing text printed to the standard output."""
+
         def __enter__(self):
             """Saves the standard output and replace it with a mock."""
             self._stdout = sys.stdout
@@ -135,61 +142,65 @@ def __test_print_truth_table(infixes, tables, debug):
             sys.stdout = self._stdout
 
     capturer = PrintCapturer()
-    for infix,table in zip(infixes, tables):
+    for infix, table in zip(infixes, tables):
         formula = Formula.parse(infix)
         if debug:
             print('Testing truth table of', formula)
         with capturer as output:
             print_truth_table(formula)
         if debug:
-            print ('Printed:\n' + capturer.captured)
-            print ('Expected:\n' + table)
+            print('Printed:\n' + capturer.captured)
+            print('Expected:\n' + table)
         import re
         assert re.sub('[ -]+', ' ', capturer.captured) == \
                re.sub('[ -]+', ' ', table)
 
+
 def test_is_tautology(debug=False):
-    for infix,answer in [['~(p&q7)',   False], ['(x|~x)',       True],
-                            ['(p->q)', False], ['(p->p)', True],
-                            ['(F|T)',     True],  ['((y1|~y1)&T)', True],
-                            ['((T&T)|F)', True],  ['F',            False],
-                            ['x',         False], ['~y',           False],
-                            ['((x->y)&((y->z)&(x&~z)))', False],
-                            ['~((x->y)&((y->z)&(x&~z)))', True]]:
+    for infix, answer in [['~(p&q7)', False], ['(x|~x)', True],
+                          ['(p->q)', False], ['(p->p)', True],
+                          ['(F|T)', True], ['((y1|~y1)&T)', True],
+                          ['((T&T)|F)', True], ['F', False],
+                          ['x', False], ['~y', False],
+                          ['((x->y)&((y->z)&(x&~z)))', False],
+                          ['~((x->y)&((y->z)&(x&~z)))', True]]:
         formula = Formula.parse(infix)
         if debug:
             print('Testing whether', formula, 'is a tautology')
         assert is_tautology(formula) == answer
 
+
 def test_is_contradiction(debug=False):
-    for infix,answer in [['~(p&q7)',   False], ['~(x|~x)',       True],
-                            ['(T->F)',     True],  ['((y1|~y1)&T)', False],
-                            ['((T&T)|F)', False],  ['F',            True],
-                            ['x',         False], ['~y',           False],
-                            ['((x->y)&((y->z)&(x&~z)))', True]]:
+    for infix, answer in [['~(p&q7)', False], ['~(x|~x)', True],
+                          ['(T->F)', True], ['((y1|~y1)&T)', False],
+                          ['((T&T)|F)', False], ['F', True],
+                          ['x', False], ['~y', False],
+                          ['((x->y)&((y->z)&(x&~z)))', True]]:
         formula = Formula.parse(infix)
         if debug:
             print('Testing whether', formula, 'is a contradiction')
         assert is_contradiction(formula) == answer
 
+
 def test_is_satisfiable(debug=False):
-    for infix,answer in [['~(p&q7)',   True], ['~(x|~x)',       False],
-                            ['(T->F)',     False],  ['((y1|~y1)&T)', True],
-                            ['((T&T)|F)', True],  ['F',            False],
-                            ['x',         True], ['~y',           True],
-                            ['((x->y)&((y->z)&(x&~z)))', False]]:
+    for infix, answer in [['~(p&q7)', True], ['~(x|~x)', False],
+                          ['(T->F)', False], ['((y1|~y1)&T)', True],
+                          ['((T&T)|F)', True], ['F', False],
+                          ['x', True], ['~y', True],
+                          ['((x->y)&((y->z)&(x&~z)))', False]]:
         formula = Formula.parse(infix)
         if debug:
             print('Testing whether', formula, 'is satisfiable')
         assert is_satisfiable(formula) == answer
+
 
 def test_synthesize_for_model(debug=False):
     all_models1 = [{'x': False},
                    {'x': True}]
     all_models2 = [{'p': False, 'q': False},
                    {'p': False, 'q': True},
-                   {'p': True,  'q': False},
-                   {'p': True,  'q': True}]
+                   {'p': True, 'q': False},
+                   {'p': True, 'q': True}]
     all_models3 = [{'r1': False, 'r12': False, 'p37': False},
                    {'r1': False, 'r12': False, 'p37': True},
                    {'r1': False, 'r12': True, 'p37': False},
@@ -208,13 +219,15 @@ def test_synthesize_for_model(debug=False):
             assert is_clause(f), str(f) + ' should be a clause'
             all_values = [False] * len(all_models)
             all_values[idx] = True
-            for model,value in zip(all_models, all_values):
+            for model, value in zip(all_models, all_values):
                 assert evaluate(f, frozendict(model)) == value
+
 
 def is_clause(f):
     if is_variable(f.root) or (f.root == '~' and is_variable(f.first.root)):
         return True
     return f.root == '&' and is_clause(f.first) and is_clause(f.second)
+
 
 ##def test_synthesize(debug=False):
 ##    all_models1 = [{'p': False}, {'p': True}]
@@ -264,10 +277,10 @@ def test_synthesize(debug=False):
     all_variables2 = ['p', 'q']
     all_models2 = [{'p': False, 'q': False},
                    {'p': False, 'q': True},
-                   {'p': True,  'q': False},
-                   {'p': True,  'q': True}]
-    value_lists2 = [(True,  False, False, True),
-                    (True,  True,  True,  True),
+                   {'p': True, 'q': False},
+                   {'p': True, 'q': True}]
+    value_lists2 = [(True, False, False, True),
+                    (True, True, True, True),
                     (False, False, False, False)]
 
     all_variables3 = ['r1', 'r12', 'p37']
@@ -283,28 +296,30 @@ def test_synthesize(debug=False):
                     (True, True, True, True, True, True, True, True),
                     (False, False, False, False, False, False, False, False)]
 
-    for all_variables, all_models,value_lists in [
-            [all_variables1, all_models1, value_lists1],
-            [all_variables2, all_models2, value_lists2],
-            [all_variables3, all_models3, value_lists3]]:
+    for all_variables, all_models, value_lists in [
+        [all_variables1, all_models1, value_lists1],
+        [all_variables2, all_models2, value_lists2],
+        [all_variables3, all_models3, value_lists3]]:
         for all_values in value_lists:
             if debug:
                 print('Testing synthesis of formula for variables',
                       all_variables, 'and model-values', all_values)
             formula = synthesize(all_variables, all_values)
             assert type(formula) is Formula, \
-                   'Expected a formula, got ' + str(formula)
+                'Expected a formula, got ' + str(formula)
             assert is_DNF(formula), str(formula) + ' should be a DNF'
             assert formula.variables().issubset(set(all_variables))
             for model, value in zip(all_models, all_values):
                 assert evaluate(formula, frozendict(model)) == value, \
-                       str(formula) + ' does not evaluate to ' + str(value) + \
-                       ' on ' + str(model)
+                    str(formula) + ' does not evaluate to ' + str(value) + \
+                    ' on ' + str(model)
+
 
 def is_DNF(formula):
     return is_clause(formula) or \
            (formula.root == '|' and is_DNF(formula.first) and
             is_DNF(formula.second))
+
 
 def test_evaluate_inference(debug=False):
     from propositions.proofs import InferenceRule
@@ -331,7 +346,7 @@ def test_evaluate_inference(debug=False):
 
     # Test 3
     rule3 = InferenceRule([Formula.parse(s) for s in ['(p->q)', '(q->r)']],
-                           Formula.parse('r'))
+                          Formula.parse('r'))
     for model in all_models(['p', 'q', 'r']):
         if debug:
             print('Testing evaluation of inference rule', rule3, 'in model',
@@ -340,22 +355,23 @@ def test_evaluate_inference(debug=False):
                (model['p'] and not model['q']) or \
                (model['q'] and not model['r']) or model['r']
 
+
 def test_is_sound_inference(debug=False):
     from propositions.proofs import InferenceRule
 
-    for assumptions,conclusion,tautological in [
-            [[], '(~p|p)', True],
-            [[], '(p|p)', False],
-            [[], '(~p|q)', False],
-            [['(~p|q)', 'p'], 'q', True],
-            [['(p|q)', 'p'], 'q', False],
-            [['(p|q)', '(~p|r)'], '(q|r)', True],
-            [['(p->q)', '(q->r)'], 'r', False],
-            [['(p->q)', '(q->r)'], '(p->r)', True],
-            [['(x|y)'], '(y|x)', True],
-            [['x'], '(x|y)', True],
-            [['(x&y)'], 'x', True],
-            [['x'], '(x&y)', False]]:
+    for assumptions, conclusion, tautological in [
+        [[], '(~p|p)', True],
+        [[], '(p|p)', False],
+        [[], '(~p|q)', False],
+        [['(~p|q)', 'p'], 'q', True],
+        [['(p|q)', 'p'], 'q', False],
+        [['(p|q)', '(~p|r)'], '(q|r)', True],
+        [['(p->q)', '(q->r)'], 'r', False],
+        [['(p->q)', '(q->r)'], '(p->r)', True],
+        [['(x|y)'], '(y|x)', True],
+        [['x'], '(x|y)', True],
+        [['(x&y)'], 'x', True],
+        [['x'], '(x&y)', False]]:
         rule = InferenceRule(
             [Formula.parse(assumption) for assumption in assumptions],
             Formula.parse(conclusion))
@@ -370,43 +386,46 @@ def test_is_sound_inference(debug=False):
             print('Testing that', rule, 'is sound')
         assert is_sound_inference(rule)
 
+
 def test_evaluate_all_operators(debug=False):
     infix1 = '(p+q7)'
     models_values1 = [
-        ({'p': True,  'q7': False}, True),
+        ({'p': True, 'q7': False}, True),
         ({'p': False, 'q7': False}, False),
-        ({'p': True,  'q7': True},  False)
+        ({'p': True, 'q7': True}, False)
     ]
     infix2 = '~(p<->q7)'
     models_values2 = [
-        ({'p': True,  'q7': False}, True),
+        ({'p': True, 'q7': False}, True),
         ({'p': False, 'q7': False}, False),
-        ({'p': True,  'q7': True},  False)
+        ({'p': True, 'q7': True}, False)
     ]
     infix3 = '~((x-&x)-|(y-&y))'
     models_values3 = [
-        ({'x': True,  'y': False}, True),
-        ({'x': False,  'y': False}, True),
-        ({'x': True,  'y': True}, False)
+        ({'x': True, 'y': False}, True),
+        ({'x': False, 'y': False}, True),
+        ({'x': True, 'y': True}, False)
     ]
-    for infix,models_values in [[infix1, models_values1],
-                                [infix2, models_values2],
-                                [infix3, models_values3]]:
+    for infix, models_values in [[infix1, models_values1],
+                                 [infix2, models_values2],
+                                 [infix3, models_values3]]:
         formula = Formula.parse(infix)
-        for model,value in models_values:
+        for model, value in models_values:
             if debug:
                 print('Testing evaluation of formula', formula, 'in model',
                       model)
             assert evaluate(formula, frozendict(model)) == value
 
+
 def test_is_tautology_all_operators(debug=False):
-    for infix,tautology in [['~(p-&q7)', False], ['(x<->~~x)', True],
-                            ['(F-&T)',  True],  ['((y1+~y1)&T)', True],
-                            ['(x-|x)',  False], ['((x-&y)<->(~x|~y))', True]]:
+    for infix, tautology in [['~(p-&q7)', False], ['(x<->~~x)', True],
+                             ['(F-&T)', True], ['((y1+~y1)&T)', True],
+                             ['(x-|x)', False], ['((x-&y)<->(~x|~y))', True]]:
         formula = Formula.parse(infix)
         if debug:
             print('Testing whether', formula, 'is a tautology')
         assert is_tautology(formula) == tautology
+
 
 def test_ex2(debug=False):
     test_evaluate(debug)
@@ -419,15 +438,18 @@ def test_ex2(debug=False):
     test_synthesize_for_model(debug)
     test_synthesize(debug)
 
+
 def test_ex3(debug=False):
     assert is_binary('+'), 'Change is_binary() before testing Chapter 3 tasks.'
     test_evaluate_all_operators(debug)
     test_is_tautology_all_operators(debug)
 
+
 def test_ex4(debug=False):
     test_evaluate_inference(debug)
     test_is_sound_inference(debug)
-    
+
+
 def test_all(debug=False):
     test_ex2(debug)
     test_ex3(debug)
