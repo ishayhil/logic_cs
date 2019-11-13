@@ -58,9 +58,7 @@ def is_binary(s: str) -> bool:
     Returns:
         ``True`` if the given string is a binary operator, ``False`` otherwise.
     """
-    return s == '&' or s == '|' or s == '->'
-    # For Chapter 3:
-    # return s in {'&', '|',  '->', '+', '<->', '-&', '-|'}
+    return s in {'&', '|', '->', '+', '<->', '-&', '-|'}
 
 
 @frozen
@@ -206,7 +204,7 @@ class Formula:
             return Formula(s[0], f), postfix
         elif s[0] == '(':  # binary
             first, postfix = Formula.parse_prefix(s[1:])
-            quantifier_cg = re.findall(r'[&|]|->', postfix)
+            quantifier_cg = re.findall(r'-&|-\||->|<->|\||&|\+', postfix)
             if Formula._invalid_capture_group_size(quantifier_cg):
                 return error
 
@@ -276,8 +274,7 @@ class Formula:
 
     # Tasks for Chapter 3
 
-    def substitute_variables(
-            self, substitution_map: Mapping[str, Formula]) -> Formula:
+    def substitute_variables(self, substitution_map: Mapping[str, Formula]) -> Formula:
         """Substitutes in the current formula, each variable `v` that is a key
         in `substitution_map` with the formula `substitution_map[v]`.
 
@@ -295,10 +292,25 @@ class Formula:
         """
         for variable in substitution_map:
             assert is_variable(variable)
-        # Task 3.3
 
-    def substitute_operators(
-            self, substitution_map: Mapping[str, Formula]) -> Formula:
+        return self._substitute_variables(substitution_map)
+
+    def _substitute_variables(self, substitution_map: Mapping[str, Formula]) -> Formula:
+        root = self.root
+        if is_constant(root):
+            return Formula(root)
+        elif is_variable(root):
+            return substitution_map[root] if root in substitution_map else Formula(root)
+        elif is_unary(root):
+            return Formula(root, self.first._substitute_variables(substitution_map))
+        else:  # binary
+            return Formula(
+                root,
+                self.first._substitute_variables(substitution_map),
+                self.second._substitute_variables(substitution_map)
+            )
+
+    def substitute_operators(self, substitution_map: Mapping[str, Formula]) -> Formula:
         """Substitutes in the current formula, each constant or operator `op`
         that is a key in `substitution_map` with the formula
         `substitution_map[op]` applied to its (zero or one or two) operands,
@@ -321,4 +333,36 @@ class Formula:
             assert is_binary(operator) or is_unary(operator) or \
                    is_constant(operator)
             assert substitution_map[operator].variables().issubset({'p', 'q'})
-        # Task 3.4
+
+        return self.substitute_operators_helper(substitution_map)
+
+    def substitute_operators_helper(self, substitution_map: Mapping[str, Formula]):
+        if self.root in substitution_map:
+            return self._switch_op(substitution_map)
+        elif is_variable(self.root) or is_constant(self.root):
+            return Formula(self.root)
+        elif is_unary(self.root):
+            return Formula(self.root, self.first.substitute_operators_helper(substitution_map))
+        else:
+            return Formula(
+                self.root,
+                self.first.substitute_operators_helper(substitution_map),
+                self.second.substitute_operators_helper(substitution_map)
+            )
+
+    def _switch_op(self, substitution_map: Mapping[str, Formula]) -> Formula:
+        return substitution_map[self.root].substitute_variables(Formula.get_mapping_dict(self, substitution_map))
+
+    @staticmethod
+    def get_mapping_dict(formula: Formula, substitution_map: Mapping[str, Formula]) -> Mapping[str, Formula]:
+        if is_constant(formula.root):
+            return {}
+        if is_unary(formula.root):
+            return {
+                'p': formula.first.substitute_operators_helper(substitution_map)
+            }
+        else:
+            return {
+                'p': formula.first.substitute_operators_helper(substitution_map),
+                'q': formula.second.substitute_operators_helper(substitution_map),
+            }

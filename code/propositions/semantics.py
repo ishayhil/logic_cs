@@ -71,8 +71,18 @@ def evaluate(formula: Formula, model: Model) -> bool:
 def evaluate_binary(quantifier: str, first: Formula, second: Formula, model: Model):
     if quantifier == "&":
         return evaluate(first, model) and evaluate(second, model)
+    elif quantifier == "-&":  # nand
+        return not (evaluate(first, model) and evaluate(second, model))
     elif quantifier == "|":
         return evaluate(first, model) or evaluate(second, model)
+    elif quantifier == "-|":  # nor
+        return not (evaluate(first, model) or evaluate(second, model))
+    elif quantifier == "+":  # xor
+        return (evaluate(first, model) and not evaluate(second, model)) or (
+                not evaluate(first, model) and evaluate(second, model))
+    elif quantifier == "<->":  # iff
+        return (not evaluate(first, model) or evaluate(second, model)) and (
+                evaluate(first, model) or not evaluate(second, model))
     else:  # ->
         return not evaluate(first, model) or evaluate(second, model)
 
