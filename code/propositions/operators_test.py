@@ -14,12 +14,14 @@ many_fs = ['F', 'T', 'r', '~x', '(x+y)', '(x<->y)', '(x-&y)', '(x-|y)', '(x|y)',
            '((p1|~p2)|~(p3|~~p4))', '((x+y)<->(~x+~y))',
            '((x-|~y)&(~F->(z<->T)))', '~~~~F']
 
+
 def test_operators_defined(debug=False):
     if debug:
         print('Verifying that all operators are recognized.')
-    for s in {'&', '|',  '->', '+', '<->', '-&', '-|'}:
+    for s in {'&', '|', '->', '+', '<->', '-&', '-|'}:
         assert is_binary(s)
-    
+
+
 def test_to_not_and_or(debug=False):
     if debug:
         print()
@@ -29,9 +31,10 @@ def test_to_not_and_or(debug=False):
                   "to a formula using only '&', '|' and '~'.")
         f = Formula.parse(f)
         ff = to_not_and_or(f)
-        assert ff.operators().issubset({'&', '~','|'}), \
-               str(ff) + ' contains wrong operators'
+        assert ff.operators().issubset({'&', '~', '|'}), \
+            str(ff) + ' contains wrong operators'
         assert is_tautology(Formula('<->', f, ff))
+
 
 def test_to_not_and(debug=False):
     if debug:
@@ -43,9 +46,10 @@ def test_to_not_and(debug=False):
         f = Formula.parse(f)
         ff = to_not_and(f)
         assert ff.operators().issubset({'&', '~'}), \
-               str(ff) + ' contains wrong operators'
+            str(ff) + ' contains wrong operators'
         assert is_tautology(Formula('<->', f, ff))
-    
+
+
 def test_to_nand(debug=False):
     if debug:
         print()
@@ -55,8 +59,9 @@ def test_to_nand(debug=False):
         f = Formula.parse(f)
         ff = to_nand(f)
         assert ff.operators().issubset({'-&'}), \
-               str(ff) + ' contains wrong operators'
+            str(ff) + ' contains wrong operators'
         assert is_tautology(Formula('<->', f, ff))
+
 
 def test_to_implies_not(debug=False):
     if debug:
@@ -68,8 +73,9 @@ def test_to_implies_not(debug=False):
         f = Formula.parse(f)
         ff = to_implies_not(f)
         assert ff.operators().issubset({'->', '~'}), \
-               str(ff) + ' contains wrong operators'
+            str(ff) + ' contains wrong operators'
         assert is_tautology(Formula('<->', f, ff))
+
 
 def test_to_implies_false(debug=False):
     if debug:
@@ -81,8 +87,9 @@ def test_to_implies_false(debug=False):
         f = Formula.parse(f)
         ff = to_implies_false(f)
         assert ff.operators().issubset({'->', 'F'}), \
-               str(ff) + ' contains wrong operators'
+            str(ff) + ' contains wrong operators'
         assert is_tautology(Formula('<->', f, ff))
+
 
 def test_ex3(debug=False):
     assert is_binary('+'), 'Change is_binary() before testing Chapter 3 tasks.'
@@ -92,6 +99,7 @@ def test_ex3(debug=False):
     test_to_nand(debug)
     test_to_implies_not(debug)
     test_to_implies_false(debug)
+
 
 def test_all(debug=False):
     test_ex3(debug)
