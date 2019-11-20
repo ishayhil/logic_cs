@@ -276,7 +276,10 @@ def evaluate_inference(rule: InferenceRule, model: Model) -> bool:
         otherwise.
     """
     assert is_model(model)
-    # Task 4.2
+
+    evaluates = [evaluate(asm, model) for asm in rule.assumptions]
+    boolean = all(evaluates)
+    return not boolean or evaluate(rule.conclusion, model)
 
 
 def is_sound_inference(rule: InferenceRule) -> bool:
@@ -289,4 +292,6 @@ def is_sound_inference(rule: InferenceRule) -> bool:
     Returns:
         ``True`` if the given inference rule is sound, ``False`` otherwise.
     """
-    # Task 4.3
+    models = all_models(list(rule.variables()))
+    evals = [evaluate_inference(rule, model) for model in models]
+    return all(evals)
