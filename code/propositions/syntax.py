@@ -294,7 +294,7 @@ class Formula:
             assert is_variable(variable)
 
         return self._substitute_variables(substitution_map)
-
+    
     def _substitute_variables(self, substitution_map: Mapping[str, Formula]) -> Formula:
         root = self.root
         if is_constant(root):

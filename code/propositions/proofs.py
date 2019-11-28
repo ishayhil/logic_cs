@@ -429,7 +429,16 @@ def prove_specialization(proof: Proof, specialization: InferenceRule) -> Proof:
     """
     assert proof.is_valid()
     assert specialization.is_specialization_of(proof.statement)
-    # Task 5.1
+
+    s_map = proof.statement.specialization_map(specialization)
+
+    return Proof(
+        statement=proof.statement.specialize(s_map),
+        rules=proof.rules,
+        lines=[Proof.Line(formula=line.formula.substitute_variables(s_map), rule=line.rule,
+                          assumptions=line.assumptions if hasattr(line, "assumptions") else None) for line in
+               proof.lines]
+    )
 
 
 def inline_proof_once(main_proof: Proof, line_number: int, lemma_proof: Proof) \
@@ -458,7 +467,47 @@ def inline_proof_once(main_proof: Proof, line_number: int, lemma_proof: Proof) \
     """
     assert main_proof.lines[line_number].rule == lemma_proof.statement
     assert lemma_proof.is_valid()
-    # Task 5.2a
+
+    s_map = lemma_proof.statement.specialization_map(main_proof.rule_for_line(line_number))
+
+    new_rules = {*lemma_proof.rules, *main_proof.rules}
+    extended_lines = []
+    extended_assumptions = []
+
+    def find_assmp_line(f: Formula) -> Proof.Line:
+        for n in main_proof.lines[line_number].assumptions:
+            if main_proof.lines[n].formula == f:
+                return main_proof.lines[n]
+        raise Exception("illegal assumptions")
+
+    for ind, line in enumerate(lemma_proof.lines):
+        formula = line.formula.substitute_variables(s_map)
+        if line.is_assumption():
+            ln = find_assmp_line(formula)
+            if ln.is_assumption():  # means this is an assmp of main proof
+                extended_lines.append(Proof.Line(formula, None))
+            else:
+                extended_lines.append(ln)
+        elif hasattr(line, 'assumptions'):
+            assumptions = [n + line_number for n in line.assumptions]
+            rule = line.rule
+            extended_lines.append(Proof.Line(formula, rule, assumptions))
+
+    row_place = lambda n: n - 1 + len(extended_lines) if n >= line_number else n
+
+    new_lines = [
+        *main_proof.lines[:line_number],
+        *extended_lines,
+        *[Proof.Line(formula=line.formula, rule=line.rule,
+                     assumptions=[row_place(n) for n in line.assumptions] if hasattr(line,
+                                                                                     'assumptions') else None)
+          for line in main_proof.lines[line_number + 1:]]
+    ]
+
+    return Proof(
+        statement=InferenceRule([*main_proof.statement.assumptions, *extended_assumptions],
+                                main_proof.statement.conclusion), rules=new_rules, lines=new_lines
+    )
 
 
 def inline_proof(main_proof: Proof, lemma_proof: Proof) -> Proof:
@@ -479,7 +528,22 @@ def inline_proof(main_proof: Proof, lemma_proof: Proof) -> Proof:
         allowed in the two given proofs but without the "lemma" rule proved by
         `lemma_proof`.
     """
-    # Task 5.2b
 
+    def has_lemma(p: Proof):
+        for idx, ln in enumerate(p.lines):
+            if not ln.is_assumption() and proof.rule_for_line(idx).is_specialization_of(lemma_proof.statement):
+                return ln, idx
+        return None, None
 
-print(InferenceRule.merge_specialization_maps({}, {}))
+    proof = main_proof
+    while True:
+        line, ind = has_lemma(proof)
+        if line is None:
+            break
+        proof = inline_proof_once(proof, ind, lemma_proof)
+
+    return Proof(
+        statement=proof.statement,
+        rules={rule for rule in proof.rules if rule != lemma_proof.statement},
+        lines=proof.lines
+    )

@@ -9,6 +9,7 @@ from propositions.syntax import *
 from propositions.proofs import *
 from propositions.axiomatic_systems import *
 
+
 def prove_corollary(antecedent_proof: Proof, consequent: Formula,
                     conditional: InferenceRule) -> Proof:
     """Converts the given proof of a formula `antecedent` into a proof of the
@@ -33,7 +34,22 @@ def prove_corollary(antecedent_proof: Proof, consequent: Formula,
     assert InferenceRule([],
                          Formula('->', antecedent_proof.statement.conclusion,
                                  consequent)).is_specialization_of(conditional)
-    # Task 5.3a
+
+    first_map = InferenceRule.formula_specialization_map(conditional.conclusion.first,
+                                                         antecedent_proof.lines[-1].formula)
+    second_map = InferenceRule.formula_specialization_map(conditional.conclusion.second, consequent)
+    s_map = InferenceRule.merge_specialization_maps(first_map, second_map)
+
+    new_rules = antecedent_proof.rules.union({conditional})
+    new_lines = [
+        Proof.Line(conditional.conclusion.substitute_variables(s_map), rule=conditional, assumptions=[]),
+        Proof.Line(consequent, rule=MP,
+                   assumptions=[len(antecedent_proof.lines) - 1, len(antecedent_proof.lines)])
+    ]
+    statement = InferenceRule(antecedent_proof.statement.assumptions, consequent)
+
+    return Proof(statement, new_rules, [*antecedent_proof.lines, *new_lines])
+
 
 def combine_proofs(antecedent1_proof: Proof, antecedent2_proof: Proof,
                    consequent: Formula, double_conditional: InferenceRule) -> \
@@ -66,9 +82,30 @@ def combine_proofs(antecedent1_proof: Proof, antecedent2_proof: Proof,
     assert antecedent1_proof.rules == antecedent2_proof.rules
     assert InferenceRule(
         [], Formula('->', antecedent1_proof.statement.conclusion,
-        Formula('->', antecedent2_proof.statement.conclusion, consequent))
-        ).is_specialization_of(double_conditional)
-    # Task 5.3b
+                    Formula('->', antecedent2_proof.statement.conclusion, consequent))
+    ).is_specialization_of(double_conditional)
+
+    # all: (a1->(a2->p))
+    # proof1 proves (a2->p)
+    proof1 = prove_corollary(antecedent1_proof, Formula('->', antecedent2_proof.statement.conclusion, consequent),
+                             double_conditional)
+
+    external_lines = [
+        *[Proof.Line(formula=line.formula, rule=line.rule,
+                     assumptions=[n + len(proof1.lines) for n in
+                                  range(len(line.assumptions))] if not line.is_assumption() else None) for line in
+          antecedent2_proof.lines],
+        Proof.Line(formula=consequent, rule=MP,
+                   assumptions=[len(proof1.lines) + len(antecedent2_proof.lines) - 1, len(proof1.lines) - 1])
+    ]
+
+    proof = Proof(
+        statement=InferenceRule(antecedent1_proof.statement.assumptions, consequent),
+        rules=proof1.rules.union(antecedent2_proof.rules),
+        lines=[*proof1.lines, *external_lines]
+    )
+    return proof
+
 
 def remove_assumption(proof: Proof) -> Proof:
     """Converts a proof of some `conclusion` formula, the last assumption of
@@ -89,12 +126,114 @@ def remove_assumption(proof: Proof) -> Proof:
         `~propositions.axiomatic_systems.I0`,
         `~propositions.axiomatic_systems.I1`, and
         `~propositions.axiomatic_systems.D`.
-    """        
+    """
     assert proof.is_valid()
     assert len(proof.statement.assumptions) > 0
     for rule in proof.rules:
         assert rule == MP or len(rule.assumptions) == 0
-    # Task 5.4
+
+    the_assumptions = proof.statement.assumptions[-1]
+    new_assumptions = [p for p in proof.statement.assumptions if p != the_assumptions]
+    new_formulas = generate_new_formulas(proof.lines, the_assumptions)
+
+    new_lines = []
+    line_cnt = 0
+    for new_formula, line in zip(new_formulas, proof.lines):
+        if line.formula == the_assumptions:
+            external_lines = handle_same(new_formula)
+        elif line.formula in new_assumptions:
+            external_lines = handle_assumptions(new_formula, line_cnt)
+        else:  # has to be axiom
+            external_lines = handle_axiom(new_formula, line_cnt, line, new_lines, new_formulas, proof.rules)
+
+        line_cnt += len(external_lines)
+        new_lines.extend(external_lines)
+
+    return Proof(
+        InferenceRule(new_assumptions, new_formulas[-1]),
+        {*proof.rules, MP, I0, I1, D},
+        lines=new_lines
+    )
+
+
+def handle_axiom(new_formula: Formula, line_cnt: int, old_line: Proof.Line, new_lines_so_far, new_formulas, rules) -> \
+        List[
+            Proof.Line]:
+    if not old_line.assumptions:
+        axiom = find_matching_inference_rule(new_formula.second, rules)
+        return handle_axiom_not_mp(new_formula, line_cnt, axiom)
+    else:
+        return handle_axiom_mp(old_line, new_lines_so_far, new_formulas, new_formula, line_cnt)
+
+
+def handle_axiom_mp(old_line: Proof.Line, new_lines_so_far, new_formulas, new_formula, line_cnt):
+    indexes = get_mp_matching_lines(old_line, new_lines_so_far, new_formulas)
+
+    d_formula = Formula('->', new_lines_so_far[indexes[1]].formula,
+                        Formula('->', new_lines_so_far[indexes[0]].formula, new_formula))
+    d_map = get_s_map(D, Formula('->', new_lines_so_far[indexes[1]].formula,
+                                 Formula('->', new_lines_so_far[indexes[0]].formula, new_formula)))
+
+    return [
+        Proof.Line(D.conclusion.substitute_variables(d_map), D, []),
+        Proof.Line(d_formula.second, MP, [indexes[1], line_cnt]),
+        Proof.Line(new_formula, MP, [indexes[0], line_cnt + 1]),
+    ]
+
+
+def handle_axiom_not_mp(new_formula: Formula, line_cnt, axiom: InferenceRule) -> List[Proof.Line]:
+    return handle_assumptions_or_not_mp(new_formula, line_cnt, axiom=axiom)
+
+
+def find_matching_inference_rule(f: Formula, rules) -> InferenceRule:
+    for r in rules:
+        if InferenceRule([], f).is_specialization_of(r):
+            return r
+
+    raise RuntimeError
+
+
+def handle_assumptions(new_formula: Formula, line_cnt: int) -> List[Proof.Line]:
+    return handle_assumptions_or_not_mp(new_formula, line_cnt, axiom=None)
+
+
+def handle_assumptions_or_not_mp(new_formula: Formula, line_cnt: int, axiom: Union[None, InferenceRule]) -> List[
+    Proof.Line]:
+    i1_map = get_s_map(I1, Formula("->", first=new_formula.second, second=new_formula))  # (old -> (new -> old))
+    if axiom is None:
+        first_line = Proof.Line(new_formula.second, None)
+    else:
+        first_line = Proof.Line(new_formula.second, axiom, [])
+
+    return [
+        first_line,
+        Proof.Line(I1.conclusion.substitute_variables(i1_map), I1, []),
+        Proof.Line(new_formula, MP, [line_cnt, line_cnt + 1])
+    ]
+
+
+def get_mp_matching_lines(old_line: Proof.Line, new_lines_so_far, new_formulas):
+    indexes = []
+    for asmp in old_line.assumptions:
+        formula = new_formulas[asmp]
+        for ind, line in enumerate(new_lines_so_far):
+            if line.formula == formula:
+                indexes.append(ind)
+                break
+    return indexes
+
+
+def get_s_map(axiom: InferenceRule, formula: Formula):
+    return InferenceRule.formula_specialization_map(axiom.conclusion, formula)
+
+
+def handle_same(new_formula: Formula) -> List[Proof.Line]:
+    return [Proof.Line(new_formula, rule=I0, assumptions=[])]
+
+
+def generate_new_formulas(lines: Tuple[Proof.Line], f: Formula) -> List[Formula]:
+    return [Formula('->', f, line.formula) for line in lines]
+
 
 def proof_from_inconsistency(proof_of_affirmation: Proof,
                              proof_of_negation: Proof, conclusion: Formula) -> \
@@ -121,6 +260,7 @@ def proof_from_inconsistency(proof_of_affirmation: Proof,
            proof_of_negation.statement.conclusion
     assert proof_of_affirmation.rules == proof_of_negation.rules
     # Task 5.6
+
 
 def prove_by_contradiction(proof: Proof) -> Proof:
     """Converts the given proof of ``'~(p->p)'``, the last assumption of which

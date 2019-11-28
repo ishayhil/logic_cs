@@ -88,3 +88,12 @@ fresh_variable_name_generator: Iterator[str] = \
 # will return 'c2', and so on. """
 fresh_constant_name_generator: Iterator[str] = \
     __prefix_with_index_sequence_generator('c')
+
+def hello(a: int) -> int:
+    """This is a docstring 
+    `a = 3`
+    """
+    return 3
+
+
+hello(4)
