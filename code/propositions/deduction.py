@@ -157,8 +157,7 @@ def remove_assumption(proof: Proof) -> Proof:
 
 
 def handle_axiom(new_formula: Formula, line_cnt: int, old_line: Proof.Line, new_lines_so_far, new_formulas, rules) -> \
-        List[
-            Proof.Line]:
+        List[Proof.Line]:
     if not old_line.assumptions:
         axiom = find_matching_inference_rule(new_formula.second, rules)
         return handle_axiom_not_mp(new_formula, line_cnt, axiom)
@@ -235,6 +234,20 @@ def generate_new_formulas(lines: Tuple[Proof.Line], f: Formula) -> List[Formula]
     return [Formula('->', f, line.formula) for line in lines]
 
 
+def merge_proofs(proof1: Proof, proof2: Proof) -> Proof:
+    proof_2_lines = [
+        Proof.Line(line.formula, line.rule,
+                   [n + len(proof1.lines) for n in line.assumptions] if not line.is_assumption() else None) for line in
+        proof2.lines
+    ]
+
+    lines = [*proof1.lines, *proof_2_lines]
+    statement = InferenceRule(proof1.statement.assumptions, proof2.statement.conclusion)
+    rules = proof1.rules.union(proof2.rules)
+
+    return Proof(statement, rules, lines)
+
+
 def proof_from_inconsistency(proof_of_affirmation: Proof,
                              proof_of_negation: Proof, conclusion: Formula) -> \
         Proof:
@@ -259,7 +272,18 @@ def proof_from_inconsistency(proof_of_affirmation: Proof,
     assert Formula('~', proof_of_affirmation.statement.conclusion) == \
            proof_of_negation.statement.conclusion
     assert proof_of_affirmation.rules == proof_of_negation.rules
-    # Task 5.6
+
+    merged_proofs = merge_proofs(proof_of_affirmation, proof_of_negation)
+    i2_formula = Formula('->', merged_proofs.statement.conclusion,
+                         Formula('->', proof_of_affirmation.statement.conclusion, conclusion))
+    new_lines = [
+        Proof.Line(i2_formula, I2, []),
+        Proof.Line(i2_formula.second, MP,
+                   [len(merged_proofs.lines) - 1, len(merged_proofs.lines)]),
+        Proof.Line(i2_formula.second.second, MP, [len(proof_of_affirmation.lines) - 1, len(merged_proofs.lines) + 1])
+    ]
+    statement = InferenceRule(merged_proofs.statement.assumptions, conclusion)
+    return Proof(statement, merged_proofs.rules.union({I2}), [*merged_proofs.lines, *new_lines])
 
 
 def prove_by_contradiction(proof: Proof) -> Proof:
@@ -288,4 +312,25 @@ def prove_by_contradiction(proof: Proof) -> Proof:
     assert proof.statement.assumptions[-1].root == '~'
     for rule in proof.rules:
         assert rule == MP or len(rule.assumptions) == 0
-    # Task 5.7
+
+    # (~q->~p)->(p->q) = N
+    proof1 = remove_assumption(proof)
+    s_map = {
+        'p': proof.statement.conclusion.first,
+        # conclusion without ~
+        'q': proof.statement.assumptions[-1].first
+    }
+
+    n_formula = N.conclusion.substitute_variables(s_map)
+    new_lines = [
+        Proof.Line(n_formula, N, []),
+        Proof.Line(n_formula.second, MP, [len(proof1.lines) - 1, len(proof1.lines)]),  # ((p->p)->q)
+        Proof.Line(proof.statement.conclusion.first, I0, []),  # (p->p)
+        Proof.Line(n_formula.second.second, MP, [len(proof1.lines) + 2, len(proof1.lines) + 1]),
+    ]
+    statement = InferenceRule(proof1.statement.assumptions, n_formula.second.second)
+    lines = [*proof1.lines, *new_lines]
+    rules = proof1.rules.union({N})
+    a = Proof(statement, rules, lines)
+    print(a)
+    return a
