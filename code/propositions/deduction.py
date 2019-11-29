@@ -331,6 +331,4 @@ def prove_by_contradiction(proof: Proof) -> Proof:
     statement = InferenceRule(proof1.statement.assumptions, n_formula.second.second)
     lines = [*proof1.lines, *new_lines]
     rules = proof1.rules.union({N})
-    a = Proof(statement, rules, lines)
-    print(a)
-    return a
+    return Proof(statement, rules, lines)

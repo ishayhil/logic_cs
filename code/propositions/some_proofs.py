@@ -92,7 +92,7 @@ def prove_hypothetical_syllogism() -> Proof:
     statement = InferenceRule([Formula.parse('(p->q)'), Formula.parse('(q->r)'), Formula.parse('p'), ],
                               Formula.parse('r'))
     lines = [
-        Proof.Line(Formula.parse('(p-q)'), None),
+        Proof.Line(Formula.parse('(p->q)'), None),
         Proof.Line(Formula.parse('p'), None),
         Proof.Line(Formula.parse('q'), MP, assumptions=[1, 0]),
         Proof.Line(Formula.parse('(q->r)'), None),
