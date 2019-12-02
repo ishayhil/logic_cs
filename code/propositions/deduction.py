@@ -93,7 +93,7 @@ def combine_proofs(antecedent1_proof: Proof, antecedent2_proof: Proof,
     external_lines = [
         *[Proof.Line(formula=line.formula, rule=line.rule,
                      assumptions=[n + len(proof1.lines) for n in
-                                  range(len(line.assumptions))] if not line.is_assumption() else None) for line in
+                                  line.assumptions] if not line.is_assumption() else None) for line in
           antecedent2_proof.lines],
         Proof.Line(formula=consequent, rule=MP,
                    assumptions=[len(proof1.lines) + len(antecedent2_proof.lines) - 1, len(proof1.lines) - 1])
