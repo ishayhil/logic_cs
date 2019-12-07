@@ -159,12 +159,12 @@ def prove_tautology(tautology: Formula, model: Model = frozendict()) -> Proof:
     assert is_model(model)
     assert sorted(tautology.variables())[:len(model)] == sorted(model.keys())
 
-    v = sorted(tautology.variables())
+    vars = sorted(tautology.variables())
     t_model, f_model = dict(model), dict(model)
-    if len(v) == len(model):
+    if len(vars) == len(model):
         return prove_in_model(tautology, model)
     else:
-        for var in v:
+        for var in vars:
             if var not in model:
                 f_model[var] = False
                 t_model[var] = True
