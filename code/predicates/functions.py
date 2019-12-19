@@ -278,7 +278,7 @@ AbstractSet[Formula]) -> \
         for func in f.functions():
             first_rule = generate_first_rule(func, [])
             second_rule = generate_second_rule(func, [])
-            new_formulas = new_formulas.union({first_rule, second_rule})
+            new_formulas.update({first_rule, second_rule})
 
     return new_formulas
 
@@ -430,7 +430,12 @@ def add_SAME_as_equality_in_model(model: Model[T]) -> Model[T]:
         the given model.
     """
     assert 'SAME' not in model.relation_meanings
-    # Task 8.7
+
+    same = 'SAME'
+    same_meaning = {(x, x) for x in model.universe}
+    same_map = {same: same_meaning}
+    return Model(model.universe, model.constant_meanings, {**model.relation_meanings, **same_map},
+                 model.function_meanings)
 
 
 def make_equality_as_SAME_in_model(model: Model[T]) -> Model[T]:
@@ -456,4 +461,54 @@ def make_equality_as_SAME_in_model(model: Model[T]) -> Model[T]:
     assert 'SAME' in model.relation_meanings and \
            model.relation_arities['SAME'] == 2
     assert len(model.function_meanings) == 0
-    # Task 8.8
+
+    classes = {}
+    for t in model.relation_meanings['SAME']:
+        if get_repr_for_el(t[0], classes) is None and get_repr_for_el(t[1], classes) is None:
+            classes[t[0]] = set()
+            classes[t[0]].add(t[1])
+        elif get_repr_for_el(t[0], classes) is None:
+            classes[get_repr_for_el(t[1], classes)].add(t[0])
+        else:
+            classes[get_repr_for_el(t[0], classes)].add(t[1])
+
+        repr1 = get_repr_for_el(t[0], classes)
+        repr2 = get_repr_for_el(t[1], classes)
+
+        if repr1 != repr2:
+            classes.pop(repr2)
+
+    new_constants = {}
+    for el in model.constant_meanings:
+        new_constants[el] = get_repr_for_el(model.constant_meanings[el], classes)
+
+    new_universe = set(key for key in classes)
+
+    new_functions = {}
+    for func in model.function_meanings:
+        new_functions[func] = {}
+        for domain_el in model.function_meanings[func]:
+            new_domain_ele = tuple(get_repr_for_el(el, classes) for el in domain_el)
+            new_image_elem = get_repr_for_el(model.function_meanings[func][domain_el], classes)
+            new_functions[func][new_domain_ele] = new_image_elem
+
+    new_relations = {}
+    for relation in model.relation_meanings:
+        new_relations[relation] = set()
+        for t in model.relation_meanings[relation]:
+            new_t = tuple(get_repr_for_el(el, classes) for el in t)
+            new_relations[relation].add(new_t)
+
+    new_relations.pop('SAME')
+    return Model(new_universe, new_constants, new_relations, new_functions)
+
+
+def get_repr_for_el(el, classes):
+    if el in classes:
+        return el
+    else:
+        for rep in classes:
+            if el in classes[rep]:
+                return rep
+    return None
+    # raise RuntimeError("no repr found for element %s in %s" % (el, classes))
