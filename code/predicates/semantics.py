@@ -246,6 +246,28 @@ class Model(Generic[T]):
             all_asm.add(DictWrapper({free_var: e for free_var, e in zip(all_free_vars, prod)}))
         return all(self.evaluate_formula(formula, asm) for asm in all_asm for formula in formulas)
 
+    # def is_model_of(self, formulas: AbstractSet[Formula]):
+    #     """ Return whether self a model of the formulae represented by the
+    #         given list of strings. For this to be true, each of the formulae
+    #         must be satisfied, if the formula has free variables, then it must
+    #         be satisfied for every assignment of elements of the universe to
+    #         the free variables """
+    #     import itertools
+    #
+    #     for formula in formulas:
+    #         free_vars = list(formula.free_variables())
+    #         if free_vars:
+    #             all_mappings = [zip(free_vars, item) for item in
+    #                             itertools.product(self.universe, repeat=len(free_vars))]
+    #             for mapping in all_mappings:
+    #                 assignment = dict((v, e) for v, e in mapping)
+    #                 if not self.evaluate_formula(formula, assignment):
+    #                     return False
+    #         else:
+    #             if not self.evaluate_formula(formula):
+    #                 return False
+    #     return True
+
 
 class DictWrapper(dict):
     def __hash__(self):

@@ -271,7 +271,41 @@ AbstractSet[Formula]) -> \
     for formula in formulas:
         for variable in formula.variables():
             assert variable[0] != 'z'
-    # Task 8.5
+
+    new_formulas = {replace_functions_with_relations_in_formula(f) for f in formulas}
+
+    for f in formulas:
+        for func in f.functions():
+            first_rule = generate_first_rule(func, [])
+            second_rule = generate_second_rule(func, [])
+            new_formulas = new_formulas.union({first_rule, second_rule})
+
+    return new_formulas
+
+
+def generate_first_rule(function: Tuple[str, int], args_so_far: List[Term]):
+    z = next(fresh_variable_name_generator)
+    if len(args_so_far) == function[1]:
+        r_name = function_name_to_relation_name(function[0])
+        relation = Formula(r_name, arguments_or_first_or_variable=[Term(z), *args_so_far])
+        return Formula('E', z, relation)
+
+    args_so_far.append(Term(z))
+    return Formula('A', z, generate_first_rule(function, args_so_far))
+
+
+def generate_second_rule(function: Tuple[str, int], args_so_far: List[Term]):
+    if len(args_so_far) == function[1] + 2:
+        r_name = function_name_to_relation_name(function[0])
+        relation1 = Formula(r_name, arguments_or_first_or_variable=[args_so_far[0], *args_so_far[2:]])
+        relation2 = Formula(r_name, arguments_or_first_or_variable=[args_so_far[1], *args_so_far[2:]])
+        r_and = Formula('&', relation1, relation2)
+        equals = Formula('=', arguments_or_first_or_variable=args_so_far[:2])
+        return Formula('->', r_and, equals)
+
+    z = next(fresh_variable_name_generator)
+    args_so_far.append(Term(z))
+    return Formula('A', z, generate_second_rule(function, args_so_far))
 
 
 def replace_equality_with_SAME_in_formulas(formulas: AbstractSet[Formula]) -> \
@@ -300,7 +334,24 @@ def replace_equality_with_SAME_in_formulas(formulas: AbstractSet[Formula]) -> \
         assert len(formula.functions()) == 0
         assert 'SAME' not in \
                {relation for relation, arity in formula.relations()}
-    # Task 8.6
+
+    new_formulas = {replace_equals_with_same_in_formula(f) for f in formulas}
+
+
+
+
+def replace_equals_with_same_in_formula(formula: Formula):
+    if is_relation(formula.root):
+        return formula
+    if is_quantifier(formula.root):
+        return Formula(formula.root, formula.variable, replace_equals_with_same_in_formula(formula.predicate))
+    if is_binary(formula.root):
+        return Formula(formula.root, replace_equals_with_same_in_formula(formula.first),
+                       replace_equals_with_same_in_formula(formula.second))
+    if is_unary(formula.root):
+        return Formula(formula.root, replace_equals_with_same_in_formula(formula.first))
+    else:  # equality
+        return Formula('SAME', arguments_or_first_or_variable=formula.arguments)
 
 
 def add_SAME_as_equality_in_model(model: Model[T]) -> Model[T]:
