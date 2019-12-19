@@ -337,7 +337,19 @@ def replace_equality_with_SAME_in_formulas(formulas: AbstractSet[Formula]) -> \
 
     new_formulas = {replace_equals_with_same_in_formula(f) for f in formulas}
 
+    z1 = next(fresh_variable_name_generator)
+    z2 = next(fresh_variable_name_generator)
+    z3 = next(fresh_variable_name_generator)
+    reflexivity = get_reflexivity(z1)
+    symmetry = get_symmetry(z1, z2)
+    transitivity = get_transitivity(z1, z2, z3)
+    new_formulas.update({reflexivity, symmetry, transitivity})
 
+    for formula in formulas:
+        for relation in formula.relations():
+            new_formulas.add(get_relation_same_rule(relation, []))
+
+    return new_formulas
 
 
 def replace_equals_with_same_in_formula(formula: Formula):
@@ -352,6 +364,55 @@ def replace_equals_with_same_in_formula(formula: Formula):
         return Formula(formula.root, replace_equals_with_same_in_formula(formula.first))
     else:  # equality
         return Formula('SAME', arguments_or_first_or_variable=formula.arguments)
+
+
+def get_reflexivity(z1) -> Formula:
+    return Formula('A', z1, Formula('SAME', [Term(z1), Term(z1)]))
+
+
+def get_symmetry(z1, z2) -> Formula:
+    implies1 = Formula('->', Formula('SAME', [Term(z1), Term(z2)]), Formula('SAME', [Term(z2), Term(z1)]))
+    implies2 = Formula('->', Formula('SAME', [Term(z2), Term(z1)]), Formula('SAME', [Term(z1), Term(z2)]))
+    _and = Formula('&', implies1, implies2)
+    return Formula('A', z1, Formula('A', z2, _and))
+
+
+def get_transitivity(z1, z2, z3) -> Formula:
+    same1 = Formula('SAME', [Term(z1), Term(z2)])
+    same2 = Formula('SAME', [Term(z2), Term(z3)])
+    same3 = Formula('SAME', [Term(z1), Term(z3)])
+    _and = Formula('&', same1, same2)
+    implies = Formula('->', _and, same3)
+    return Formula('A', z1, Formula('A', z2, Formula('A', z3, implies)))
+
+
+def get_relation_same_rule(relation: Tuple[str, int], tuples_so_far: List[Tuple[str, str]]):
+    if len(tuples_so_far) == relation[1]:
+        same_tuples = generate_same_tuples(tuples_so_far)
+        relation_assignments = generate_relation_assignments(relation, tuples_so_far)
+        return Formula('->', same_tuples, relation_assignments)
+
+    z1 = next(fresh_variable_name_generator)
+    z2 = next(fresh_variable_name_generator)
+    tuples_so_far.append((z1, z2))
+    return Formula('A', z1, Formula('A', z2, get_relation_same_rule(relation, tuples_so_far)))
+
+
+def generate_same_tuples(tuples_so_far: List[Tuple[str, str]], i: int = 0):
+    same = Formula('SAME', arguments_or_first_or_variable=[Term(tuples_so_far[i][0]), Term(tuples_so_far[i][1])])
+    if i == len(tuples_so_far) - 1:
+        return same
+
+    return Formula('&', same, generate_same_tuples(tuples_so_far, i + 1))
+
+
+def generate_relation_assignments(relation: Tuple[str, int], tuples_so_far: List[Tuple[str, str]]):
+    first_args = [Term(t[0]) for t in tuples_so_far]
+    second_args = [Term(t[1]) for t in tuples_so_far]
+
+    r1 = Formula(relation[0], arguments_or_first_or_variable=first_args)
+    r2 = Formula(relation[0], arguments_or_first_or_variable=second_args)
+    return Formula("->", r1, r2)
 
 
 def add_SAME_as_equality_in_model(model: Model[T]) -> Model[T]:
