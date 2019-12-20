@@ -1,0 +1,3 @@
+# logic_cs
+
+## INTRODUCTION TO MATHEMATICAL LOGIC FOR PROGRAMMING-ORIENTED STUDENTS (67501), The Hebrew University of Jerusalem.
