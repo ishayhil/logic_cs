@@ -65,12 +65,6 @@ def find_main_operator(s: str) -> tuple:
     return cg[0]
 
 
-# if __name__ == '__main__':
-#     d = "((a|b)&(b&c))"
-#     t = find_main_operator(d)
-#     print(d[t[0]:t[1]])
-
-
 class ForbiddenVariableError(Exception):
     """Raised by `Term.substitute` and `Formula.substitute` when a substituted
     term contains a variable name that is forbidden in that context."""
@@ -309,7 +303,36 @@ class Term:
             assert is_constant(element_name) or is_variable(element_name)
         for variable in forbidden_variables:
             assert is_variable(variable)
-        # Task 9.1
+
+        if is_constant(self.root) or is_variable(self.root):
+            # if self.root in forbidden_variables then it is bound var, so don't replace either
+            if self.root in substitution_map and self.root not in forbidden_variables:
+                replacement = substitution_map[self.root]
+                legality = replacement.check_if_legal_replacement(forbidden_variables)
+                if legality is not None:
+                    raise ForbiddenVariableError(legality.root)
+                else:
+                    return replacement
+            else:
+                return self
+        else:  # function
+            args = []
+            for arg in self.arguments:
+                args.append(arg.substitute(substitution_map, forbidden_variables))
+            return Term(self.root, args)
+
+    def check_if_legal_replacement(self, forbidden_variables: AbstractSet[str]) -> Union[Term, None]:
+        if is_constant(self.root) or is_variable(self.root):
+            if self.root in forbidden_variables:
+                return self
+            else:
+                return None
+        else:
+            for arg in self.arguments:
+                current = arg.check_if_legal_replacement(forbidden_variables)
+                if current is not None:
+                    return current
+            return None
 
 
 def is_equality(s: str) -> bool:
@@ -645,8 +668,7 @@ class Formula:
             return set()
 
     def substitute(self, substitution_map: Mapping[str, Term],
-                   forbidden_variables: AbstractSet[str] = frozenset()) -> \
-            Formula:
+                   forbidden_variables: AbstractSet[str] = frozenset()) -> Formula:
         """Substitutes in the current formula, each constant name `name` or free
         occurrence of variable name `name` that is a key in `substitution_map`
         with the term `substitution_map[name]`.
@@ -687,7 +709,30 @@ class Formula:
             assert is_constant(element_name) or is_variable(element_name)
         for variable in forbidden_variables:
             assert is_variable(variable)
-        # Task 9.2
+
+        if is_unary(self.root):
+            return Formula(self.root, self.first.substitute(substitution_map, forbidden_variables))
+        elif is_binary(self.root):
+            return Formula(self.root, self.first.substitute(substitution_map, forbidden_variables),
+                           self.second.substitute(substitution_map, forbidden_variables))
+        elif is_quantifier(self.root):
+            # if self.variable in substitution_map:
+            #     raise ForbiddenVariableError(self.variable)
+            return Formula(self.root, self.variable,
+                           self.predicate.substitute(substitution_map, {*forbidden_variables, self.variable}))
+        elif is_equality(self.root):
+            left = self.arguments[0]
+            right = self.arguments[1]
+            return Formula(self.root,
+                           arguments_or_first_or_variable=[
+                               left.substitute(substitution_map, forbidden_variables),
+                               right.substitute(substitution_map, forbidden_variables)
+                           ])
+        else:  # relation
+            args = []
+            for arg in self.arguments:
+                args.append(arg.substitute(substitution_map, forbidden_variables))
+            return Formula(self.root, args)
 
     def propositional_skeleton(self) -> Tuple[PropositionalFormula,
                                               Mapping[str, Formula]]:
