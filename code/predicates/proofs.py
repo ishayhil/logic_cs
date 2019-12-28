@@ -271,9 +271,14 @@ class Schema:
         else:  # relation
             if not formula.arguments:
                 if formula.root in relations_instantiation_map:
-                    return Schema._instantiate_helper(relations_instantiation_map[formula.root],
-                                                      constants_and_variables_instantiation_map,
-                                                      relations_instantiation_map, bound_variables)
+                    new_formula = relations_instantiation_map[formula.root]
+                    intersection = new_formula.free_variables().intersection(bound_variables)
+                    if len(intersection) > 0:
+                        raise Schema.BoundVariableError(list(intersection)[0], formula.root)
+                    # return Schema._instantiate_helper(relations_instantiation_map[formula.root],
+                    #                                   constants_and_variables_instantiation_map,
+                    #                                   relations_instantiation_map, bound_variables)
+                    return new_formula
                 else:
                     return formula
             else:  # unary relation
@@ -288,15 +293,20 @@ class Schema:
                 new_arg = Schema.get_new_term(formula.arguments[0], bound_variables,
                                               constants_and_variables_instantiation_map)
                 new_formula = relations_instantiation_map[formula.root]
-                if len(new_formula.variables().intersection(bound_variables)) > 0:
-                    raise Schema.BoundVariableError(str(new_formula.variables().intersection(bound_variables)),
-                                                    formula.root)
+
+                intersection = new_formula.free_variables().intersection(bound_variables)
+                if len(intersection) > 0:
+                    raise Schema.BoundVariableError(list(intersection)[0], formula.root)
 
                 new_formula = new_formula.substitute({'_': new_arg})
                 new_const_dict = {k: v for k, v in constants_and_variables_instantiation_map.items() if
                                   k != formula.arguments[0].root}
-                return Schema._instantiate_helper(new_formula, new_const_dict, relations_instantiation_map,
-                                                  bound_variables)
+
+                relations_instantiation_map = dict(relations_instantiation_map)  # to avoid infinity loop
+                relations_instantiation_map.pop(formula.root)
+                # return Schema._instantiate_helper(new_formula, {}, {},
+                #                                   bound_variables)
+                return new_formula
 
     @staticmethod
     def get_new_term(term: Term, bound_variables: AbstractSet[str],
@@ -305,7 +315,7 @@ class Schema:
             if term.root in constants_and_variables_instantiation_map:
                 if (term.root in bound_variables
                         and term.root != constants_and_variables_instantiation_map[term.root].root):
-                    raise Schema.BoundVariableError("a", "")
+                    raise Schema.BoundVariableError(term.root, "R")
                 else:
                     return constants_and_variables_instantiation_map[term.root]
             else:
@@ -428,7 +438,20 @@ class Schema:
             else:
                 assert is_relation(key)
                 assert isinstance(instantiation_map[key], Formula)
-        # Task 9.4
+
+        if any(key not in self.templates for key in instantiation_map):
+            return None
+
+        relation_map = {k: v for k, v in dict(instantiation_map).items() if isinstance(v, Formula)}
+        var_constant_map = {k: (v if isinstance(v, Term) else Term(v)) for k, v in dict(instantiation_map).items() if
+                            not isinstance(v, Formula)}
+
+        try:
+            return Schema._instantiate_helper(self.formula, var_constant_map, relation_map)
+        except Schema.BoundVariableError:
+            return None
+        except ForbiddenVariableError:
+            return None
 
 
 @frozen
@@ -866,3 +889,10 @@ def prove_tautology(tautology: Formula) -> Proof:
     """
     assert is_propositional_tautology(tautology.propositional_skeleton()[0])
     # Task 9.12
+
+if __name__ == '__main__':
+    f = "(Ax[(Q()->R(x))]->(Q()->Ax[R(x)]))"
+    Formula.parse(f)
+
+    fo = Formula('->', Formula.parse("R()"), Formula.parse("Q()"))
+    print(fo)

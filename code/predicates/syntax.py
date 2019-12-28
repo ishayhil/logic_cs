@@ -54,8 +54,13 @@ def split_without_nested_args(s: str) -> list:
 
 
 def find_main_operator(s: str) -> tuple:
-    if s[1] == '(':  # there is nested braces
-        nested_braces = get_nested_str(s[1:])
+    if s[1] in ['(', 'A']: # there is nested braces or predicate Ax[...]
+        if s[1] == '(':
+            nested_braces = get_nested_str(s[1:])
+        else:
+            var = re.findall(r"A[u-z]+\[", s)[0][1:-1]
+            nested_braces = 'A' + var + get_nested_str(s[len(var) + 2:], '[', ']')
+
         offset = 1 + len(nested_braces) + 2
         s = s[offset:]
         cg = [(m.start(0) + offset, m.end(0) + offset) for m in re.finditer(r'&|->|\|', s)]
