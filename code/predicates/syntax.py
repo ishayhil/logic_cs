@@ -6,7 +6,7 @@
 """Syntactic handling of first-order formulas and terms."""
 
 from __future__ import annotations
-from typing import AbstractSet, Mapping, Optional, Sequence, Set, Tuple, Union
+from typing import AbstractSet, Mapping, Optional, Sequence, Set, Tuple, Union, Dict
 from functools import reduce
 
 from logic_utils import fresh_variable_name_generator, frozen
@@ -54,12 +54,13 @@ def split_without_nested_args(s: str) -> list:
 
 
 def find_main_operator(s: str) -> tuple:
-    if s[1] in ['(', 'A']: # there is nested braces or predicate Ax[...]
+    if s[1] in ['(', 'A', 'E'] or s[1:3] in ['~A', '~E']:  # there is nested braces or predicate Ax[...]
         if s[1] == '(':
             nested_braces = get_nested_str(s[1:])
         else:
-            var = re.findall(r"A[u-z]+\[", s)[0][1:-1]
-            nested_braces = 'A' + var + get_nested_str(s[len(var) + 2:], '[', ']')
+            pre_exp = re.findall(r"~?[AE][u-z]+", s)[0]
+            var = re.findall(r"[u-z]+", pre_exp)[0]
+            nested_braces = pre_exp[:-len(var)] + var + get_nested_str(s[len(pre_exp) + 1:], '[', ']')
 
         offset = 1 + len(nested_braces) + 2
         s = s[offset:]
@@ -625,7 +626,8 @@ class Formula:
         if is_unary(self.root):
             return self.first.free_variables()
         if is_relation(self.root):
-            return reduce(lambda a, b: a.union(b), [arg.variables() for arg in self.arguments])
+            return reduce(lambda a, b: a.union(b),
+                          [arg.variables() for arg in self.arguments]) if self.arguments else set()
         if is_binary(self.root):
             return self.first.free_variables().union(self.second.free_variables())
         if is_quantifier(self.root):
@@ -756,7 +758,28 @@ class Formula:
             propositional formula to the subformula for which it was
             substituted.
         """
-        # Task 9.6
+
+        return self._propositional_skeleton_helper(dict())
+
+    def _propositional_skeleton_helper(self, mapping: Dict[str, Formula]) -> Tuple[PropositionalFormula,
+                                                                                   Mapping[str, Formula]]:
+
+        for k in mapping:
+            if mapping[k] == self:
+                return PropositionalFormula(k), mapping
+        if is_quantifier(self.root) or is_relation(self.root) or is_equality(self.root):
+            z1 = next(fresh_variable_name_generator)
+            mapping[z1] = self
+            return PropositionalFormula(z1), mapping
+        elif is_unary(self.root):
+            formula, dic = self.first._propositional_skeleton_helper(mapping)
+            return PropositionalFormula(self.root, formula), {**mapping, **dic}
+        elif is_binary(self.root):
+            formula1, dic1 = self.first._propositional_skeleton_helper(mapping)
+            mapping = {**dic1, **mapping}
+            formula2, dic2 = self.second._propositional_skeleton_helper(mapping)
+            mapping = {**dic2, **mapping}
+            return PropositionalFormula(self.root, formula1, formula2), mapping
 
     @staticmethod
     def from_propositional_skeleton(skeleton: PropositionalFormula,
@@ -777,4 +800,11 @@ class Formula:
         """
         for key in substitution_map:
             assert is_propositional_variable(key)
-        # Task 9.10
+
+        if is_unary(skeleton.root):
+            return Formula(skeleton.root, Formula.from_propositional_skeleton(skeleton.first, substitution_map))
+        elif is_binary(skeleton.root):
+            return Formula(skeleton.root, Formula.from_propositional_skeleton(skeleton.first, substitution_map),
+                           Formula.from_propositional_skeleton(skeleton.second, substitution_map))
+        else:  # var
+            return substitution_map[skeleton.root]
