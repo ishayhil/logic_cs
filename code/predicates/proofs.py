@@ -686,9 +686,9 @@ class Proof:
 
             if not is_quantifier(self.formula.root):
                 return False
-            b = Formula('A', self.formula.variable, lines[self.predicate_line_number].formula) == self.formula
-            c = self.predicate_line_number < line_number
-            return b and c
+            a = Formula('A', self.formula.variable, lines[self.predicate_line_number].formula) == self.formula
+            b = self.predicate_line_number < line_number
+            return b and a
 
     @frozen
     class TautologyLine:
