@@ -180,6 +180,14 @@ def is_tautology(formula: Formula) -> bool:
     return reduce(lambda a, b: a and b, truth_values(formula, models))
 
 
+# if __name__ == '__main__':
+#     f1 = Formula.parse('(x->y)')
+#     f2 = Formula.parse('(y->z)')
+#     f3 = Formula.parse('(x->z)')
+#     f = Formula('->', f1, Formula('->', f2, f3))
+#     print(is_tautology(f))
+
+
 def is_contradiction(formula: Formula) -> bool:
     """Checks if the given formula is a contradiction.
 
