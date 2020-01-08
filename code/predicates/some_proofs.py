@@ -206,7 +206,7 @@ bool = False) -> \
     return prover.qed()
 
 
-def lovexrs_proof(print_as_proof_forms: bool = False) -> Proof:
+def lovers_proof(print_as_proof_forms: bool = False) -> Proof:
     """Proves from the assumptions:
 
     1. Everybody loves somebody (``'Ax[Ey[Loves(x,y)]]'``), and
