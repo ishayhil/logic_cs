@@ -469,8 +469,86 @@ def multiply_zero_proof(print_as_proof_forms: bool = False) -> Proof:
         A valid proof of the above inference via
         `~predicates.prover.Prover.AXIOMS`.
     """
+    # 0+x=x
+    # 0(0+x)=0*x
+    # 0*0+0*x=0*x
+    # 0*0 = 0*x-0*x
+    # 0*0 = x(0-0)
+    # 0*0 = x*0
+
+    # 0*x-0*x = 0
+
+    # 0+0=0
+    # 0*0+0*0=0*0
+    # 0*0=0
+    # 0*0
     prover = Prover(FIELD_AXIOMS, print_as_proof_forms)
     # Task 10.11
+    zero_axiom = prover.add_assumption('plus(0,x)=x')
+    associativity = prover.add_assumption('plus(plus(x,y),z)=plus(x,plus(y,z))')
+    neg = prover.add_assumption('plus(minus(x),x)=0')
+    dist = prover.add_assumption('times(x,plus(y,z))=plus(times(x,y),times(x,z))')
+    comm = prover.add_assumption('times(x,y)=times(y,x)')
+
+    # 0 + 0 = 0
+    step1 = prover.add_free_instantiation('plus(0,0)=0',
+                                          zero_axiom,
+                                          {'x': '0'})
+    # x(0+0) = x*0
+    step2 = prover.add_substituted_equality('times(x,plus(0,0))=times(x,0)',
+                                            step1,
+                                            'times(x,_)')
+    # -x*0+x*0 = 0
+    step3 = prover.add_free_instantiation('plus(minus(times(x,0)),times(x,0))=0',
+                                          neg,
+                                          {'x': 'times(x,0)'})
+    # x*(0+0) = x*0 + x*0
+    step4 = prover.add_free_instantiation('times(x,plus(0,0))=plus(times(x,0),times(x,0))',
+                                          dist,
+                                          {
+                                              'x': 'x',
+                                              'y': '0',
+                                              'z': '0'
+                                          })
+    # x*0 + x*0 = x(0+0)
+    step5 = prover.add_flipped_equality('plus(times(x,0),times(x,0))=times(x,plus(0,0))',
+                                        step4)
+    # x0+x0 = x0
+    step6 = prover.add_chained_equality('plus(times(x,0),times(x,0))=times(x,0)',
+                                        [step5, step2])
+    # -x*0 + (x*0+x*0) = -x*0 + x*0
+    step7 = prover.add_substituted_equality(
+        'plus(minus(times(x,0)),plus(times(x,0),times(x,0)))=plus(minus(times(x,0)),times(x,0))',
+        step6,
+        'plus(minus(times(x,0)),_)')
+    # (-x*0+x0) + x*0 = -x*0 + (x*0 + x*0)
+    step8 = prover.add_free_instantiation(
+        'plus(plus(minus(times(x,0)),times(x,0)),times(x,0))=plus(minus(times(x,0)),plus(times(x,0),times(x,0)))',
+        associativity,
+        {
+            'x': 'minus(times(x,0))',
+            'y': 'times(x,0)',
+            'z': 'times(x,0)'
+        })
+    # (-*x0+x*0)+x0 = 0+x*0
+    step9 = prover.add_substituted_equality('plus(plus(minus(times(x,0)),times(x,0)),times(x,0))=plus(0,times(x,0))',
+                                            step3,
+                                            'plus(_,times(x,0))')
+    # flip to obtain 0+x*0 = (-x*0+x*0)+x*0
+    step10 = prover.add_flipped_equality('plus(0,times(x,0))=plus(plus(minus(times(x,0)),times(x,0)),times(x,0)))',
+                                         step9)
+    # 0 + x*0 = x*0
+    step11 = prover.add_free_instantiation('plus(0,times(x,0))=times(x,0)',
+                                           zero_axiom,
+                                           {'x': 'times(x,0)'})
+    # flip to obtain x*0 = 0+x*0
+    step12 = prover.add_flipped_equality('times(x,0)=plus(0,times(x,0))',
+                                         step11)
+    # 0x = x*0
+    step13 = prover.add_free_instantiation('times(0,x)=times(x,0)',
+                                           comm,
+                                           {'x': '0', 'y': 'x'})
+    step14 = prover.add_chained_equality('times(0,x)=0', [step13, step12, step10, step8, step7, step3])
     return prover.qed()
 
 
@@ -498,6 +576,48 @@ def peano_zero_proof(print_as_proof_forms: bool = False) -> Proof:
     """
     prover = Prover(PEANO_AXIOMS, print_as_proof_forms)
     # Task 10.12
+    step1 = prover.add_assumption('plus(x,0)=x')  # Axiom 4
+    # 0+0=0
+    step2 = prover.add_free_instantiation('plus(0,0)=0', step1, {'x': '0'})
+    # 0+x=x -> (s(0+x)=s(0+x) -> s(0+x) = s(x))
+    step3 = prover.add_instantiated_assumption('(plus(0,x)=x->(s(plus(0,x))=s(plus(0,x))->s(plus(0,x))=s(x))',
+                                               Prover.ME,
+                                               {'c': 'plus(0,x)',
+                                                'd': 'x',
+                                                'R': 's(plus(0,x))=s(_)'})
+    # s(0+x) = s(0+x)
+    step4 = prover.add_instantiated_assumption('s(plus(0,x))=s(plus(0,x))',
+                                               Prover.RX,
+                                               {'c': 's(plus(0,x))'})
+    # get 0+x=x -> s(0+x)=s(x)
+    step5 = prover.add_tautological_implication('(plus(0,x)=x->s(plus(0,x))=s(x))',
+                                                {step3, step4})
+    # x+s(y) = s(x+y)
+    step6 = prover.add_assumption('plus(x,s(y))=s(plus(x,y))')
+    # axiom 5: 0 + s(x) = s(0+x)
+    step7 = prover.add_free_instantiation('plus(0,s(x))=s(plus(0,x))',
+                                          step6,
+                                          {'x': '0', 'y': 'x'})
+    # s(0+x)=s(x)->(0+s(x)=s(0+x)->0+s(x)=s(x)), ME
+    step8 = prover.add_instantiated_assumption('(s(plus(0,x))=s(x)->(plus(0,s(x))=s(plus(0,x))->plus(0,s(x))=s(x)))',
+                                               Prover.ME,
+                                               {'c': 's(plus(0,x))',
+                                                'd': 's(x)',
+                                                'R': 'plus(0,s(x))=_'})
+    # 0+x=x->0+s(x)=s(x)
+    step9 = prover.add_tautological_implication('(plus(0,x)=x->plus(0,s(x))=s(x))',
+                                                {step5, step7, step8})
+    # Ax[0+x=x->0+s(x)=s(x)]
+    step10 = prover.add_ug('Ax[(plus(0,x)=x->plus(0,s(x))=s(x))]', step9)
+    # induction
+    step11 = prover.add_instantiated_assumption('((plus(0,0)=0&Ax[(plus(0,x)=x->plus(0,s(x))=s(x))])->Ax[plus(0,x)=x])',
+                                                INDUCTION_AXIOM,
+                                                {'R': 'plus(0,_)=_'})
+    # Ax[0+x=x]
+    step12 = prover.add_tautological_implication('Ax[plus(0,x)=x]',
+                                                 {step11, step10, step2})
+    # 0+x=x
+    step13 = prover.add_universal_instantiation('plus(0,x)=x', step12, Term('x'))
     return prover.qed()
 
 
