@@ -640,6 +640,21 @@ def russell_paradox_proof(print_as_proof_forms: bool = False) -> Proof:
     """
     prover = Prover({COMPREHENSION_AXIOM}, print_as_proof_forms)
     # Task 10.13
+    # hint
+    step1 = prover.add_instantiated_assumption('Ey[Ax[((In(x,y)->~In(x,x))&(~In(x,x)->In(x,y)))]]',
+                                               COMPREHENSION_AXIOM,
+                                               {'R': '~In(_,_)'})
+    mapping = {'R': Formula.parse('((In(_,y)->~In(_,_))&(~In(_,_)->In(_,y)))'),
+               'x': 'x',
+               'c': Term('y')}
+    form = Prover.UI.instantiate(mapping)
+    step2 = prover.add_instantiated_assumption(form,
+                                               Prover.UI,
+                                               mapping)
+    step3 = prover.add_tautology('(((In(y,y)->~In(y,y))&(~In(y,y)->In(y,y)))->(z=z&~z=z))')
+    step5 = prover.add_tautological_implication('(Ax[((In(x,y)->~In(x,x))&(~In(x,x)->In(x,y)))]->'
+                                                '(z=z&~z=z))', {step2, step3})
+    step6 = prover.add_existential_derivation('(z=z&~z=z)', step1, step5)
     return prover.qed()
 
 
