@@ -7,16 +7,17 @@
 
 from predicates.deduction import *
 
+
 def test_remove_assumption(debug=False):
     from predicates.some_proofs import \
-         syllogism_proof, syllogism_proof_with_universal_instantiation,\
-         syllogism_all_all_proof,\
-         syllogism_all_all_proof_with_tautological_implication,\
-         syllogism_all_exists_proof,\
-         syllogism_all_exists_proof_with_existential_derivation,\
-         GROUP_AXIOMS, unique_zero_proof, lovers_proof, homework_proof
+        syllogism_proof, syllogism_proof_with_universal_instantiation, \
+        syllogism_all_all_proof, \
+        syllogism_all_all_proof_with_tautological_implication, \
+        syllogism_all_exists_proof, \
+        syllogism_all_exists_proof_with_existential_derivation, \
+        GROUP_AXIOMS, unique_zero_proof, lovers_proof, homework_proof
     from predicates.some_proofs_test import \
-         test_unique_zero_proof, test_lovers_proof, test_homework_proof
+        test_unique_zero_proof, test_lovers_proof, test_homework_proof
 
     # Test one invocation
     test_unique_zero_proof()
@@ -33,37 +34,37 @@ def test_remove_assumption(debug=False):
     # Test two concurrent invocations
     test_lovers_proof()
     test_homework_proof()
-    for proof,assumption1,assumption2 in [
-            (syllogism_proof(), 'Ax[(Man(x)->Mortal(x))]', 'Man(aristotle)'),
-            (syllogism_proof(), 'Man(aristotle)', 'Ax[(Man(x)->Mortal(x))]'),
-            (syllogism_proof_with_universal_instantiation(),
-             'Ax[(Man(x)->Mortal(x))]', 'Man(aristotle)'),
-            (syllogism_proof_with_universal_instantiation(),
-             'Man(aristotle)', 'Ax[(Man(x)->Mortal(x))]'),
-            (syllogism_all_all_proof(),
-             'Ax[(Greek(x)->Human(x))]', 'Ax[(Human(x)->Mortal(x))]'),
-            (syllogism_all_all_proof(),
-             'Ax[(Human(x)->Mortal(x))]', 'Ax[(Greek(x)->Human(x))]'),
-            (syllogism_all_all_proof_with_tautological_implication(),
-             'Ax[(Greek(x)->Human(x))]', 'Ax[(Human(x)->Mortal(x))]'),
-            (syllogism_all_all_proof_with_tautological_implication(),
-             'Ax[(Human(x)->Mortal(x))]', 'Ax[(Greek(x)->Human(x))]'),
-            (syllogism_all_exists_proof(),
-             'Ax[(Man(x)->Mortal(x))]', 'Ex[Man(x)]'),
-            (syllogism_all_exists_proof(),
-             'Ex[Man(x)]', 'Ax[(Man(x)->Mortal(x))]'),
-            (syllogism_all_exists_proof_with_existential_derivation(),
-             'Ax[(Man(x)->Mortal(x))]', 'Ex[Man(x)]'),
-            (syllogism_all_exists_proof_with_existential_derivation(),
-             'Ex[Man(x)]', 'Ax[(Man(x)->Mortal(x))]'),
-            (lovers_proof(),
-             'Ax[Ey[Loves(x,y)]]', 'Ax[Az[Ay[(Loves(x,y)->Loves(z,x))]]]'),
-            (lovers_proof(),
-             'Ax[Az[Ay[(Loves(x,y)->Loves(z,x))]]]', 'Ax[Ey[Loves(x,y)]]'),
-            (homework_proof(),
-             '~Ex[(Homework(x)&Fun(x))]', 'Ex[(Homework(x)&Reading(x))]'),
-            (homework_proof(),
-             'Ex[(Homework(x)&Reading(x))]', '~Ex[(Homework(x)&Fun(x))]')]:
+    for proof, assumption1, assumption2 in [
+        (syllogism_proof(), 'Ax[(Man(x)->Mortal(x))]', 'Man(aristotle)'),
+        (syllogism_proof(), 'Man(aristotle)', 'Ax[(Man(x)->Mortal(x))]'),
+        (syllogism_proof_with_universal_instantiation(),
+         'Ax[(Man(x)->Mortal(x))]', 'Man(aristotle)'),
+        (syllogism_proof_with_universal_instantiation(),
+         'Man(aristotle)', 'Ax[(Man(x)->Mortal(x))]'),
+        (syllogism_all_all_proof(),
+         'Ax[(Greek(x)->Human(x))]', 'Ax[(Human(x)->Mortal(x))]'),
+        (syllogism_all_all_proof(),
+         'Ax[(Human(x)->Mortal(x))]', 'Ax[(Greek(x)->Human(x))]'),
+        (syllogism_all_all_proof_with_tautological_implication(),
+         'Ax[(Greek(x)->Human(x))]', 'Ax[(Human(x)->Mortal(x))]'),
+        (syllogism_all_all_proof_with_tautological_implication(),
+         'Ax[(Human(x)->Mortal(x))]', 'Ax[(Greek(x)->Human(x))]'),
+        (syllogism_all_exists_proof(),
+         'Ax[(Man(x)->Mortal(x))]', 'Ex[Man(x)]'),
+        (syllogism_all_exists_proof(),
+         'Ex[Man(x)]', 'Ax[(Man(x)->Mortal(x))]'),
+        (syllogism_all_exists_proof_with_existential_derivation(),
+         'Ax[(Man(x)->Mortal(x))]', 'Ex[Man(x)]'),
+        (syllogism_all_exists_proof_with_existential_derivation(),
+         'Ex[Man(x)]', 'Ax[(Man(x)->Mortal(x))]'),
+        (lovers_proof(),
+         'Ax[Ey[Loves(x,y)]]', 'Ax[Az[Ay[(Loves(x,y)->Loves(z,x))]]]'),
+        (lovers_proof(),
+         'Ax[Az[Ay[(Loves(x,y)->Loves(z,x))]]]', 'Ax[Ey[Loves(x,y)]]'),
+        (homework_proof(),
+         '~Ex[(Homework(x)&Fun(x))]', 'Ex[(Homework(x)&Reading(x))]'),
+        (homework_proof(),
+         'Ex[(Homework(x)&Reading(x))]', '~Ex[(Homework(x)&Fun(x))]')]:
         if (debug):
             print("Testing remove_assumption with assumption '" + assumption1 +
                   "' for the following proof:\n" + str(proof))
@@ -85,7 +86,8 @@ def test_remove_assumption(debug=False):
                                              Formula('->', assumption1,
                                                      proof.conclusion))
         assert result2.is_valid()
-        
+
+
 def test_proof_by_way_of_contradiction(debug=False):
     # Test on a simple nontautological proof
     prover = Prover(['Ax[x=c]', 'Ax[~x=c]'], debug)
@@ -118,7 +120,7 @@ def test_proof_by_way_of_contradiction(debug=False):
     # Test on Russell's Paradox proof, when replacing the Axiom Schema of
     # Comprehension with its instance that is actually used.
     from predicates.some_proofs import \
-         COMPREHENSION_AXIOM, russell_paradox_proof
+        COMPREHENSION_AXIOM, russell_paradox_proof
     from predicates.some_proofs_test import test_russell_paradox_proof
     test_russell_paradox_proof()
     assumption = Formula.parse(
@@ -128,11 +130,11 @@ def test_proof_by_way_of_contradiction(debug=False):
     new_lines = []
     for line in proof.lines:
         if isinstance(line, Proof.AssumptionLine) and \
-           line.assumption == COMPREHENSION_AXIOM:
+                line.assumption == COMPREHENSION_AXIOM:
             assert line.formula == assumption, \
-                   'Unexpected instance of COMPREHENSION_AXIOM found in proof' \
-                   " of Russell's Paradox. Cannot test " \
-                   'proof_by_way_of_contradiction'
+                'Unexpected instance of COMPREHENSION_AXIOM found in proof' \
+                " of Russell's Paradox. Cannot test " \
+                'proof_by_way_of_contradiction'
             new_lines.append(Proof.AssumptionLine(assumption,
                                                   Schema(assumption), {}))
         else:
@@ -151,9 +153,11 @@ def test_proof_by_way_of_contradiction(debug=False):
            '~Ey[Ax[((In(x,y)->~In(x,x))&(~In(x,x)->In(x,y)))]]'
     assert result.is_valid()
 
+
 def test_ex11(debug=False):
     test_remove_assumption(debug)
     test_proof_by_way_of_contradiction(debug)
+
 
 def test_all(debug=False):
     test_ex11(debug)
