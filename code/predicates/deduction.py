@@ -158,7 +158,6 @@ def proof_by_way_of_contradiction(proof: Proof, assumption: Formula,
         if isinstance(line, Proof.UGLine):
             assert line.formula.variable not in assumption.free_variables()
     prover = Prover(proof.assumptions.difference({Schema(assumption)}), print_as_proof_forms)
-    # prover.add_proof(proof.conclusion, proof)
     remove_asm = remove_assumption(proof, assumption, False)
     step1 = prover.add_proof(remove_asm.conclusion, remove_asm)
     step2 = prover.add_tautological_implication(Formula('~', assumption), {step1})

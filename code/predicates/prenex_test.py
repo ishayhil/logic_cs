@@ -73,6 +73,7 @@ def test_pull_out_quantifications_across_negation(debug=False):
             print('Testing pull_out_quantifications_across_negation on',
                    formula, '...')
         result,proof = pull_out_quantifications_across_negation(formula)
+        print(proof)
         if debug:
             print('... got', result)
         assert str(result) == expected

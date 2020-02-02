@@ -153,6 +153,8 @@ class Model(Generic[T]):
             return self.function_meanings[term.root][
                 tuple(self.evaluate_term(arg, assignment) for arg in term.arguments)]
 
+    true_map = {}
+
     def evaluate_formula(self, formula: Formula,
                          assignment: Mapping[str, T] = frozendict()) -> bool:
         """Calculates the truth value of the given formula in the current model,
@@ -180,32 +182,37 @@ class Model(Generic[T]):
             assert relation in self.relation_meanings and \
                    self.relation_arities[relation] in {-1, arity}
 
+        return self.eval_formula_helper(formula, assignment)
+
+    def eval_formula_helper(self, formula, assignment):
         if is_unary(formula.root):
-            return not self.evaluate_formula(formula.first, assignment)
+            b = not self.eval_formula_helper(formula.first, assignment)
         elif is_binary(formula.root):
-            first = self.evaluate_formula(formula.first, assignment)
-            second = self.evaluate_formula(formula.second, assignment)
+            first = self.eval_formula_helper(formula.first, assignment)
+            second = self.eval_formula_helper(formula.second, assignment)
             if formula.root == '&':
-                return first and second
+                b = first and second
             elif formula.root == '|':
-                return first or second
+                b = first or second
             else:  # ->
-                return (not first) or second
+                b = (not first) or second
         elif is_relation(formula.root):
-            return tuple(self.evaluate_term(term, assignment) for term in formula.arguments) in \
-                   self.relation_meanings[formula.root]
+            b = tuple(self.evaluate_term(term, assignment) for term in formula.arguments) in \
+                self.relation_meanings[formula.root]
         elif is_equality(formula.root):
-            return self.evaluate_term(formula.arguments[0], assignment) == \
-                   self.evaluate_term(formula.arguments[1], assignment)
+            b = self.evaluate_term(formula.arguments[0], assignment) == \
+                self.evaluate_term(formula.arguments[1], assignment)
         else:  # quantifier
             new_assignment = dict(assignment).pop(formula.variable) if formula.variable in assignment \
                 else dict(assignment)
             if formula.root == 'A':
-                return all(self.evaluate_formula(formula.predicate, {**new_assignment, **{formula.variable: e}})
-                           for e in self.universe)
+                b = all(self.eval_formula_helper(formula.predicate, {**new_assignment, **{formula.variable: e}})
+                        for e in self.universe)
             else:
-                return any(self.evaluate_formula(formula.predicate, {**new_assignment, **{formula.variable: e}})
-                           for e in self.universe)
+                b = any(self.eval_formula_helper(formula.predicate, {**new_assignment, **{formula.variable: e}})
+                        for e in self.universe)
+
+        return b
 
     def all_possible_assignments_for_model(self, arr, n, r, index, data, i, all_arrays):
         if index == r:
@@ -245,28 +252,6 @@ class Model(Generic[T]):
         for prod in products:
             all_asm.add(DictWrapper({free_var: e for free_var, e in zip(all_free_vars, prod)}))
         return all(self.evaluate_formula(formula, asm) for asm in all_asm for formula in formulas)
-
-    # def is_model_of(self, formulas: AbstractSet[Formula]):
-    #     """ Return whether self a model of the formulae represented by the
-    #         given list of strings. For this to be true, each of the formulae
-    #         must be satisfied, if the formula has free variables, then it must
-    #         be satisfied for every assignment of elements of the universe to
-    #         the free variables """
-    #     import itertools
-    #
-    #     for formula in formulas:
-    #         free_vars = list(formula.free_variables())
-    #         if free_vars:
-    #             all_mappings = [zip(free_vars, item) for item in
-    #                             itertools.product(self.universe, repeat=len(free_vars))]
-    #             for mapping in all_mappings:
-    #                 assignment = dict((v, e) for v, e in mapping)
-    #                 if not self.evaluate_formula(formula, assignment):
-    #                     return False
-    #         else:
-    #             if not self.evaluate_formula(formula):
-    #                 return False
-    #     return True
 
 
 class DictWrapper(dict):

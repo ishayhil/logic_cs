@@ -54,9 +54,11 @@ def split_without_nested_args(s: str) -> list:
 
 
 def find_main_operator(s: str) -> tuple:
-    if s[1] in ['(', 'A', 'E'] or s[1:3] in ['~A', '~E']:  # there is nested braces or predicate Ax[...]
+    if s[1] in ['(', 'A', 'E'] or s[1:3] in ['~A', '~E', '~(']:  # there is nested braces or predicate Ax[...]
         if s[1] == '(':
             nested_braces = get_nested_str(s[1:])
+        elif s[1:3] == '~(':
+            nested_braces = '~' + get_nested_str(s[2:])
         else:
             pre_exp = re.findall(r"~?[AE][u-z]+", s)[0]
             var = re.findall(r"[u-z]+", pre_exp)[0]
@@ -591,13 +593,15 @@ class Formula:
         if is_unary(self.root):
             return self.first.constants()
         if is_relation(self.root):
-            return reduce(lambda a, b: a.union(b), [arg.constants() for arg in self.arguments])
+            return reduce(lambda a, b: a.union(b),
+                          [arg.constants() for arg in self.arguments]) if self.arguments else set()
         if is_binary(self.root):
             return self.first.constants().union(self.second.constants())
         if is_quantifier(self.root):
             return self.predicate.constants()
         else:  # equality
-            return reduce(lambda a, b: a.union(b), [arg.constants() for arg in self.arguments])
+            return reduce(lambda a, b: a.union(b),
+                          [arg.constants() for arg in self.arguments]) if self.arguments else set()
 
     def variables(self) -> Set[str]:
         """Finds all variable names in the current formula.
@@ -608,13 +612,15 @@ class Formula:
         if is_unary(self.root):
             return self.first.variables()
         if is_relation(self.root):
-            return reduce(lambda a, b: a.union(b), [arg.variables() for arg in self.arguments])
+            return reduce(lambda a, b: a.union(b),
+                          [arg.variables() for arg in self.arguments]) if self.arguments else set()
         if is_binary(self.root):
             return self.first.variables().union(self.second.variables())
         if is_quantifier(self.root):
             return {self.variable}.union(self.predicate.variables())
         else:  # equality
-            return reduce(lambda a, b: a.union(b), [arg.variables() for arg in self.arguments])
+            return reduce(lambda a, b: a.union(b),
+                          [arg.variables() for arg in self.arguments]) if self.arguments else set()
 
     def free_variables(self) -> Set[str]:
         """Finds all variable names that are free in the current formula.
